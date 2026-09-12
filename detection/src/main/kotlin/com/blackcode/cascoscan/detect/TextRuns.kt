@@ -21,6 +21,17 @@ object TextRuns {
     data class Params(
         /** Characters in one run are about the same height. */
         val heightRatioTolerance: Double = 1.9,
+        /**
+         * ... and roughly comparable in width. An "i" beside a "W" is about the widest ratio real
+         * lettering produces, so 5 is generous.
+         *
+         * This is what separates a wall opening from a row of characters, and it is a ratio rather
+         * than an absolute size because it has to hold at any plot scale. An opening is drawn as a gap
+         * with a short closing line at each end: same height, same baseline, touching - identical to
+         * three characters by every other test - but the gap is many times wider than the lines that
+         * close it, and by definition always will be.
+         */
+        val widthRatioTolerance: Double = 5.0,
         /** ... and sit on the same baseline, within this fraction of their height. */
         val baselineTolerance: Double = 0.40,
         /** ... separated by a gap smaller than this multiple of their height. */
@@ -78,6 +89,7 @@ object TextRuns {
                 // Ordered by left edge, so once b starts beyond reach, so does everything after it.
                 if (b.left - a.right > params.gapFactor * maxHeight) break
                 if (!similarHeight(a, b, params)) continue
+                if (!similarWidth(a, b, params)) continue
                 if (abs(a.center.y - b.center.y) > params.baselineTolerance * maxHeight) continue
                 val gap = (b.left - a.right).coerceAtLeast(0)
                 if (gap > params.gapFactor * maxHeight) continue
@@ -93,9 +105,15 @@ object TextRuns {
         return inRun
     }
 
-    private fun similarHeight(a: IBox, b: IBox, params: Params): Boolean {
-        val hi = max(a.height, b.height).toDouble()
-        val lo = kotlin.math.min(a.height, b.height).toDouble()
-        return lo > 0 && hi / lo <= params.heightRatioTolerance
+    private fun similarHeight(a: IBox, b: IBox, params: Params): Boolean =
+        ratio(a.height, b.height) <= params.heightRatioTolerance
+
+    private fun similarWidth(a: IBox, b: IBox, params: Params): Boolean =
+        ratio(a.width, b.width) <= params.widthRatioTolerance
+
+    private fun ratio(first: Int, second: Int): Double {
+        val lo = kotlin.math.min(first, second).toDouble()
+        if (lo <= 0.0) return Double.MAX_VALUE
+        return max(first, second).toDouble() / lo
     }
 }

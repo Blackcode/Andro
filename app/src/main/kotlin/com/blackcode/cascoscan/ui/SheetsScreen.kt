@@ -93,6 +93,10 @@ class SheetsViewModel(
     private var running: Job? = null
     val isRunning: Boolean get() = running?.isActive == true
 
+    init {
+        viewModelScope.launch { repository.clearStaleRuns(projectId) }
+    }
+
     val acceptThreshold: Double get() = config.acceptThreshold
 
     fun clearMessage() {

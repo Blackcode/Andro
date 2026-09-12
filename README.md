@@ -34,7 +34,8 @@ project. A drawing set is internally consistent, so one correction on sheet 3 im
 
 ```
 detection/    The detection engine. Plain Kotlin, no Android, no third-party dependencies.
-              Unit-tested on a JVM: 78 tests, including an end-to-end synthetic drawing sheet.
+              Unit-tested on a JVM: 77 tests, including an end-to-end synthetic drawing sheet
+              and a simulated scan of it.
 app/          The Android app: PDF rendering, Room storage, Compose UI, reporting.
 ```
 
@@ -97,8 +98,11 @@ nothing else: detection falls back to the PDF's own text layer, which is what a 
 - **Symbols conventions vary by office.** The scoring weights are the tunable surface
   (`ScoringWeights`), and the prototype learning adapts to a set within a few corrections. A drawing
   set using a symbol the classifier has no form for (say, a filled triangle) will need a weight change.
-- **A scanned sheet is harder than a CAD export**, because the text layer that supplies label evidence
-  and reveals the drawing scale is not there. OCR recovers some of it.
+- **A scanned sheet is harder than a CAD export.** Measured on a simulated scan of the test sheet
+  (illumination gradient, grain, 3x3 blur): with the text layer recovered by OCR, all eight
+  penetrations are still found and accepted with nothing spurious; with no text at all, seven of eight
+  survive and up to two pieces of clutter can be accepted. Blur also inflates measured sizes by
+  10-15%, so declared label sizes are the ones to trust on a scan.
 - **Cross-sheet comparison needs both sheets to be scanned first**, and its verdicts are only as good
   as the alignment — which is why the alignment quality is shown rather than hidden.
 - Rotated (non-axis-aligned) structure is handled for symbols but the structural-line pass looks for

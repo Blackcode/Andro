@@ -81,8 +81,15 @@ That last one deserves its own note, because size cannot answer it. On a 1:50 pl
 cross by every shape measure available. What differs is *company*: characters sit on a shared baseline
 with gaps smaller than their own height, while penetration symbols are spread across the plan.
 `TextRuns` finds those rows geometrically, so it works on a scan with no text layer — precisely when it
-is needed. Slivers are excluded from being run members, which is load-bearing: a wall opening flanked
-by its two closing lines is otherwise a perfect three-character run.
+is needed.
+
+Two exclusions are load-bearing, both because of one confusion: a wall opening flanked by its two
+closing lines is the same height, on the same baseline, and touching — a perfect three-character run by
+every other test. Slivers cannot be run members, which handles it on a clean drawing; but a scan
+thickens those closing lines until they are no longer slender, so members must also be **comparable in
+width**. That one holds at any scale and on any quality of input, because an opening is by definition
+many times wider than the lines that close it, whereas an "i" beside a "W" is about as far as real
+lettering stretches.
 
 ### 8. The annotations
 
@@ -167,8 +174,28 @@ and room names (some of it cross-shaped), a title block, and the fragments left 
 structural lines.
 
 The tests assert **full recall and no accepted false positive**, both for single-pass and tiled
-detection. That is a floor, not a field accuracy figure: real drawings are messier, and the review step
-and prototype learning exist because of it.
+detection, and that the two agree penetration for penetration.
+
+The same sheet is then put through a simulated scan — illumination gradient, grain, and a 3x3 blur —
+because paper arrives as often as CAD does, and a scan attacks three different parts of the pipeline at
+once while also removing the text layer. Measured there: with text (as OCR would supply it) nothing is
+lost and nothing spurious is accepted; with no text at all, seven of eight survive and up to two pieces
+of clutter reach the accept threshold, since annotation can then only be ruled out geometrically. Blur
+also inflates measured sizes by 10–15%, which is why a declared label size is the one to trust on a
+scan and why the two are never compared against each other.
+
+That is a floor, not a field accuracy figure: real drawings are messier, and the review step and
+prototype learning exist because of it.
+
+Two bugs the scan test caught, as illustrations of what it is for:
+
+- a **negative shape prior was being scaled by how well the blob fitted that form**, so an
+  unrecognisable blob — the one case the prior exists for — received no penalty at all and could be
+  accepted on plausible size alone. Positive priors are scaled by fit; negative ones are now applied in
+  full, because a worse fit argues *harder* against the candidate;
+- **void detection was not gap-tolerant** like the rest of the pipeline, so one lost pixel in the short
+  line closing off a wall opening meant the opening stopped being enclosed and vanished. The flood now
+  runs against a sealed copy and the void is dilated back, the same trick the shape measurements use.
 
 ## Tuning
 

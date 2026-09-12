@@ -165,6 +165,19 @@ class AuditRepository(
             )
         }
 
+    /**
+     * Clears sheets left marked as running by a scan that never finished - a cancelled run whose
+     * cleanup was itself cancelled, or a process death mid-scan. Without this the sheet shows
+     * "Scanning..." for ever and cannot be re-scanned, so it runs whenever a project is opened.
+     */
+    suspend fun clearStaleRuns(projectId: String) = withContext(Dispatchers.IO) {
+        for (sheet in database.sheets().forProject(projectId)) {
+            if (sheet.detectionState == SheetEntity.State.RUNNING.name) {
+                database.sheets().update(sheet.copy(detectionState = SheetEntity.State.NOT_RUN.name))
+            }
+        }
+    }
+
     suspend fun setSheetState(sheetId: String, state: SheetEntity.State, diagnostics: String? = null) =
         withContext(Dispatchers.IO) {
             database.sheets().setDetectionState(

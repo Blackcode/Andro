@@ -98,7 +98,13 @@ object Scoring {
         val w = config.scoring
         val terms = LinkedHashMap<String, Double>()
 
-        terms["shape:${candidate.kind.name.lowercase()}"] = w.priorFor(candidate.kind) * candidate.shapeConfidence
+        // A positive prior is scaled by how well the blob fits that form. A negative one is applied in
+        // full: "this does not resemble any penetration symbol" argues against the candidate, and it
+        // argues *harder* the worse the fit - scaling it by the fit cancelled the penalty exactly when
+        // it was most deserved, which let unrecognisable blobs through on nothing but plausible size.
+        val prior = w.priorFor(candidate.kind)
+        terms["shape:${candidate.kind.name.lowercase()}"] =
+            if (prior >= 0.0) prior * candidate.shapeConfidence else prior
 
         val sizeMm = scale?.let { candidate.sizePx * it.mmPerPx }
         if (sizeMm != null) {

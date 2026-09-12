@@ -14,6 +14,7 @@ import com.blackcode.cascoscan.pdf.PdfPageSource
 import com.blackcode.cascoscan.pdf.TextSources
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
 /**
@@ -95,7 +96,9 @@ class DetectionService(
             repository.saveDetection(projectId, sheetId, result)
             Result.success(result)
         } catch (cancellation: CancellationException) {
-            repository.setSheetState(sheetId, SheetEntity.State.NOT_RUN)
+            // The scope is already cancelled, so an ordinary suspend call here would abort and leave
+            // the sheet marked RUNNING for ever - with the UI showing "Scanning..." and no way back.
+            withContext(NonCancellable) { repository.setSheetState(sheetId, SheetEntity.State.NOT_RUN) }
             throw cancellation
         } catch (t: Throwable) {
             repository.setSheetState(sheetId, SheetEntity.State.FAILED, t.message ?: t::class.java.simpleName)

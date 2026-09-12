@@ -166,7 +166,7 @@ object StructureAnalyzer {
         }
 
         // (2) Voids: background regions the structure fully encloses.
-        for (void in enclosedVoids(localMask, minVoidPx)) {
+        for (void in enclosedVoids(localMask, minVoidPx, bridgeRadius)) {
             if (void.box.longSide > maxSymbolPx) continue
             found += Found(toPageSpace(void, box, pageWidth), CandidateSource.VOID_IN_STRUCTURE)
         }
@@ -195,15 +195,23 @@ object StructureAnalyzer {
     /**
      * Background regions of [mask] that the border flood cannot reach. Each is returned as a solid
      * component covering the void, i.e. the opening itself rather than the lines around it.
+     *
+     * The flood runs against a sealed (dilated) copy for the same reason the shape measurements do: an
+     * opening is only enclosed while every line around it is unbroken, and on a scan - blurred, grainy,
+     * locally thresholded - the short closing line at the end of a wall opening is exactly the kind of
+     * stroke that loses a pixel. One gap and the opening stops existing. Sealing costs the void
+     * [sealRadius] pixels on each side, which is given back by dilating the result and clipping it to
+     * the original background.
      */
-    private fun enclosedVoids(mask: BinaryImage, minSidePx: Int): List<Component> {
-        val w = mask.width
-        val h = mask.height
+    private fun enclosedVoids(mask: BinaryImage, minSidePx: Int, sealRadius: Int): List<Component> {
+        val sealed = if (sealRadius > 0) mask.dilate(sealRadius) else mask
+        val w = sealed.width
+        val h = sealed.height
         val outside = BooleanArray(w * h)
         val stack = IntArray(w * h)
         var sp = 0
         fun push(i: Int) {
-            if (!outside[i] && !mask.ink[i]) {
+            if (!outside[i] && !sealed.ink[i]) {
                 outside[i] = true
                 stack[sp++] = i
             }
@@ -226,9 +234,10 @@ object StructureAnalyzer {
             if (y < h - 1) push(i + w)
         }
 
-        val voidMask = BinaryImage(w, h, BooleanArray(w * h) { !mask.ink[it] && !outside[it] })
+        val enclosed = BinaryImage(w, h, BooleanArray(w * h) { !sealed.ink[it] && !outside[it] })
+        val restored = if (sealRadius > 0) enclosed.dilate(sealRadius).andNot(mask) else enclosed
         val minArea = max(4, minSidePx * minSidePx / 3)
-        return ConnectedComponents.label(voidMask, minArea = minArea)
+        return ConnectedComponents.label(restored, minArea = minArea)
             .filter { min(it.box.width, it.box.height) >= minSidePx }
     }
 }
