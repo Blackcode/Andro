@@ -107,3 +107,38 @@ class GeometryTest {
         assertTrue(abs(expected - actual) <= tolerance, "expected $expected but got $actual")
     }
 }
+
+class RenderPlanTest {
+
+    @Test
+    fun `a fine drawing needs no extra resolution`() {
+        val plan = RenderPlan.forRatio(50.0)
+        assertTrue(plan.dpi in 120.0..300.0, "dpi=${plan.dpi}")
+        assertTrue(!plan.resolutionLimited)
+        assertTrue(plan.smallestReliableMm <= 75.0, "smallest=${plan.smallestReliableMm}")
+    }
+
+    @Test
+    fun `a coarse drawing is resolution limited and says so`() {
+        val plan = RenderPlan.forRatio(200.0)
+        assertEquals(300.0, plan.dpi, "should sit at the cap")
+        assertTrue(plan.resolutionLimited, "the user must be told small openings may be missed")
+        // 300 dpi at 1:200 is 16.9 mm per pixel, so 12 px is about 200 mm.
+        assertTrue(plan.smallestReliableMm > 150.0, "smallest=${plan.smallestReliableMm}")
+    }
+
+    @Test
+    fun `the plan's scale and pixel size agree with each other`() {
+        val plan = RenderPlan.forRatio(100.0)
+        // An A1 sheet is 841 x 594 mm, which is 2384 x 1684 points.
+        val (w, h) = plan.pixelsFor(2384.0, 1684.0)
+        assertTrue(w > h)
+        // The rendered width must equal the real building width the scale implies.
+        val buildingWidthMm = w * plan.scale.mmPerPx
+        val expectedMm = 841.0 * 100.0
+        assertTrue(
+            kotlin.math.abs(buildingWidthMm - expectedMm) / expectedMm < 0.01,
+            "rendered page covers $buildingWidthMm mm, expected about $expectedMm mm",
+        )
+    }
+}

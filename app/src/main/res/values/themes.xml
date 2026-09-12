@@ -1,0 +1,4 @@
+<resources>
+    <!-- Compose supplies the real theme; this only keeps the splash window from flashing white. -->
+    <style name="Theme.CascoScan" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

@@ -184,6 +184,7 @@ class PenetrationDetector(private val config: DetectionConfig = DetectionConfig(
             ),
         )
         val penetrations = ordered.mapIndexed { index, (candidate, evidence) ->
+            val sizeMm = scale?.let { candidate.sizePx * it.mmPerPx }
             Penetration(
                 id = "P${page.pageIndex + 1}.${index + 1}",
                 pageIndex = page.pageIndex,
@@ -198,6 +199,7 @@ class PenetrationDetector(private val config: DetectionConfig = DetectionConfig(
                 label = candidate.label,
                 origin = Origin.DETECTED,
                 status = AuditStatus.PENDING,
+                signature = PrototypeLibrary.Signature.of(candidate.features, candidate.kind, sizeMm),
             )
         }
 

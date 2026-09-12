@@ -163,3 +163,39 @@ class DetectorTest {
     private fun describe(result: PageResult): String =
         result.penetrations.joinToString(", ") { "${it.id}:${it.kind}@${it.center.x.toInt()},${it.center.y.toInt()}=%.2f".format(it.confidence) }
 }
+
+/**
+ * The signature carried on each record is what makes a correction outlive the session that made it,
+ * so it has to be there and it has to describe the shape that was actually found.
+ */
+class SignatureTest {
+
+    @Test
+    fun `every detection carries the measurements a correction will need`() {
+        val result = PenetrationDetector(SyntheticSheet.config()).detect(SyntheticSheet.input())
+        assertTrue(result.penetrations.isNotEmpty())
+        for (penetration in result.penetrations) {
+            val signature = assertNotNull(penetration.signature, "${penetration.id} has no signature")
+            assertEquals(penetration.kind, signature.kind)
+            assertTrue(signature.boxFill > 0.0 && signature.boxFill <= 1.05, "boxFill=${signature.boxFill}")
+            assertTrue(signature.squareness > 0.0)
+            assertNotNull(signature.logSizeMm, "the scale was known, so the size should be too")
+        }
+    }
+
+    @Test
+    fun `rejecting a detection by its stored signature lowers the same shape later`() {
+        val result = PenetrationDetector(SyntheticSheet.config()).detect(SyntheticSheet.input())
+        val ring = assertNotNull(result.penetrations.firstOrNull { it.kind == SymbolKind.CIRCLE_CROSSED })
+        val library = PrototypeLibrary()
+        library.remember(assertNotNull(ring.signature), wasPenetration = false)
+
+        val taught = PenetrationDetector(SyntheticSheet.config())
+            .detect(SyntheticSheet.input(), prototypes = library)
+        val same = assertNotNull(taught.penetrations.minByOrNull { it.center.distanceTo(ring.center) })
+        assertTrue(
+            same.confidence < ring.confidence,
+            "a rejected signature must pull the same shape down (${same.confidence} vs ${ring.confidence})",
+        )
+    }
+}

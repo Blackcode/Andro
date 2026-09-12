@@ -78,3 +78,55 @@ object ScaleEstimator {
         return Result(DrawingScale(median, DrawingScale.Source.ESTIMATED_FROM_LABELS), ratios.size, spread)
     }
 }
+
+/**
+ * Chooses the resolution to rasterise a page at, and says what that choice costs.
+ *
+ * The trade-off is unavoidable and worth stating plainly to the user. A symbol must be roughly a
+ * dozen pixels across before its form can be measured at all, and how many pixels a 110 mm sleeve
+ * gets depends entirely on the plot scale: at 1:50 it is 2.2 mm of paper, at 1:200 only 0.55 mm. So a
+ * coarse drawing needs a very high render resolution to stay readable, and past some point the render
+ * cost has to win - at which point small openings genuinely cannot be found and the app should say so
+ * rather than quietly miss them.
+ */
+object RenderPlan {
+
+    /** Below this many pixels across, a symbol's shape cannot be measured reliably. */
+    const val MIN_SYMBOL_PX = 12
+
+    data class Plan(
+        val dpi: Double,
+        val scale: DrawingScale,
+        /** Smallest real-world size that still spans [MIN_SYMBOL_PX] at this resolution. */
+        val smallestReliableMm: Double,
+        /** True when [dpi] hit the cap and small openings will be missed. */
+        val resolutionLimited: Boolean,
+    ) {
+        fun pixelsFor(pageWidthPt: Double, pageHeightPt: Double): Pair<Int, Int> =
+            (pageWidthPt * dpi / 72.0).toInt() to (pageHeightPt * dpi / 72.0).toInt()
+    }
+
+    /**
+     * @param ratioDenominator plot scale denominator: 50 for a 1:50 drawing.
+     * @param targetSmallestMm smallest opening the audit cares about.
+     * @param maxDpi render cap; 300 keeps an A0 sheet to about 35 tiles at the default tile budget.
+     */
+    fun forRatio(
+        ratioDenominator: Double,
+        targetSmallestMm: Double = 70.0,
+        maxDpi: Double = 300.0,
+        minDpi: Double = 120.0,
+    ): Plan {
+        require(ratioDenominator > 0 && targetSmallestMm > 0 && maxDpi >= minDpi)
+        // dpi such that targetSmallestMm spans MIN_SYMBOL_PX: px = mm / (25.4/dpi * ratio).
+        val ideal = MIN_SYMBOL_PX * 25.4 * ratioDenominator / targetSmallestMm
+        val dpi = ideal.coerceIn(minDpi, maxDpi)
+        val scale = DrawingScale.fromRatio(ratioDenominator, dpi)
+        return Plan(
+            dpi = dpi,
+            scale = scale,
+            smallestReliableMm = MIN_SYMBOL_PX * scale.mmPerPx,
+            resolutionLimited = ideal > maxDpi,
+        )
+    }
+}

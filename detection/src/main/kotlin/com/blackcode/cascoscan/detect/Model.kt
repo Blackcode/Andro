@@ -195,6 +195,14 @@ data class Penetration(
     val photoUris: List<String> = emptyList(),
     /** Set when this record exists because another drawing required it - see [Reconciler]. */
     val requiredByPageIndex: Int? = null,
+    /**
+     * The shape measurements that produced this record, in the compact form [PrototypeLibrary] uses.
+     *
+     * Carried on the record, and stored with it, so that confirming or rejecting a penetration weeks
+     * later still teaches the project. Without it a correction could only be remembered during the
+     * session that made the detection, which is not how an audit is actually carried out.
+     */
+    val signature: PrototypeLibrary.Signature? = null,
 ) {
     /**
      * Still waiting for a human: the machine was unsure and nobody has looked yet.
