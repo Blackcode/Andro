@@ -28,8 +28,18 @@ object PointSetAligner {
         /** Drawings are rarely rotated by odd angles; set null to allow any rotation. */
         val maxRotationDeg: Double? = 12.0,
         val maxIterations: Int = 4000,
-        /** Stop early once this fraction of the reference points is explained. */
+        /** Stop early once this fraction of the reference points is explained *and* fits tightly. */
         val goodEnoughInlierRatio: Double = 0.85,
+        /**
+         * How tightly, as a fraction of [inlierTolerancePx], before the search may stop early.
+         *
+         * Counting inliers alone is not enough to stop on. With only a handful of points and a tolerance
+         * that is an appreciable share of their spacing, many quite different transforms explain every
+         * point, and the first one stumbled upon wins - a wrong overlay that happens to satisfy the
+         * count. Requiring the fit to be tight as well means the search only stops when it has found an
+         * answer that is right rather than merely adequate.
+         */
+        val goodEnoughErrorFraction: Double = 0.20,
         /** Fixed seed: an audit must be reproducible. */
         val seed: Long = 20240917L,
     )
@@ -91,14 +101,25 @@ object PointSetAligner {
                 (evaluated.inliers == best.inliers && evaluated.meanErrorPx < best.meanErrorPx)
             ) {
                 best = evaluated
-                if (evaluated.inlierRatio >= params.goodEnoughInlierRatio) break
+                val explained = evaluated.inlierRatio >= params.goodEnoughInlierRatio
+                val tight = evaluated.meanErrorPx <= params.inlierTolerancePx * params.goodEnoughErrorFraction
+                if (explained && tight) break
             }
         }
 
         // One least-squares refit over all inliers: RANSAC's two points give the right hypothesis but
         // not the best fit.
         val rough = best ?: return null
-        return refine(rough, from, to, grid, params) ?: rough
+        val refined = refine(rough, from, to, grid, params) ?: rough
+        // The refit is unconstrained, so it can drift outside the scale or rotation the caller allowed;
+        // when it does, the hypothesis that respected them is the one to keep.
+        return if (permitted(refined.transform, params)) refined else rough
+    }
+
+    private fun permitted(t: Similarity, params: Params): Boolean {
+        if (t.scale < params.minScale || t.scale > params.maxScale) return false
+        val maxRotation = params.maxRotationDeg?.let { Math.toRadians(it) } ?: return true
+        return abs(normaliseAngle(t.rotationRad)) <= maxRotation
     }
 
     private fun sizesCompatible(
@@ -116,16 +137,24 @@ object PointSetAligner {
         return ratio <= 2.0
     }
 
+    /**
+     * Counts how many of [from] land on a target point, **one target at most once**.
+     *
+     * The uniqueness is not a nicety. Without it a transform that squeezes several source points onto one
+     * target counts them all, so a degenerate fit can score a perfect inlier ratio while explaining only
+     * one real correspondence - which is exactly how a wrong overlay wins when the tolerance is an
+     * appreciable fraction of the spacing between targets.
+     */
     private fun evaluate(t: Similarity, from: List<Pt>, index: SpatialIndex, tolerance: Double): Result {
         var inliers = 0
         var errorSum = 0.0
+        val claimed = HashSet<Int>()
         for (p in from) {
             val mapped = t.apply(p)
-            val d = index.nearestDistance(mapped, tolerance)
-            if (d != null) {
-                inliers++
-                errorSum += d
-            }
+            val nearest = index.nearest(mapped, tolerance) ?: continue
+            if (!claimed.add(nearest)) continue
+            inliers++
+            errorSum += index.distanceTo(nearest, mapped)
         }
         return Result(t, inliers, from.size, if (inliers == 0) Double.MAX_VALUE else errorSum / inliers)
     }
@@ -139,9 +168,11 @@ object PointSetAligner {
     ): Result? {
         val src = ArrayList<Pt>()
         val dst = ArrayList<Pt>()
+        val claimed = HashSet<Int>()
         for (p in from) {
             val mapped = rough.transform.apply(p)
             val nearest = index.nearest(mapped, params.inlierTolerancePx) ?: continue
+            if (!claimed.add(nearest)) continue
             src += p
             dst += to[nearest]
         }
@@ -199,6 +230,20 @@ class SpatialIndex(private val points: List<Pt>, cellSize: Double) {
 
     fun nearestDistance(p: Pt, maxDistance: Double): Double? =
         nearest(p, maxDistance)?.let { points[it].distanceTo(p) }
+
+    fun distanceTo(index: Int, p: Pt): Double = points[index].distanceTo(p)
+
+    /**
+     * Median distance from each point to its nearest neighbour: the natural scale at which a matching
+     * tolerance stops being able to tell these points apart.
+     */
+    fun medianNearestNeighbour(): Double? {
+        if (points.size < 2) return null
+        val distances = points.indices.mapNotNull { i ->
+            points.indices.filter { it != i }.minOfOrNull { points[it].distanceTo(points[i]) }
+        }.sorted()
+        return distances.getOrNull(distances.size / 2)
+    }
 
     /** Every point within [maxDistance] of [p], as index/distance pairs. */
     fun within(p: Pt, maxDistance: Double): List<Pair<Int, Double>> {
