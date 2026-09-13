@@ -92,7 +92,8 @@ yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
 
 ### Getting an APK without setting anything up
 
-Push the branch and GitHub Actions builds it: `.github/workflows/build.yml` installs the SDK, runs
+Push the branch and GitHub Actions builds it - this is the path the project is known to build by:
+`.github/workflows/build.yml` installs the SDK, runs
 `:app:assembleDebug`, and attaches the APK to the run as an artifact named **cascoscan-debug-apk**
 (Actions tab -> the run -> Artifacts). The same workflow runs the engine's tests in a separate job that
 needs no Android SDK at all. If the build fails, the run also carries `app-build-reports`.
@@ -111,43 +112,28 @@ an SDK.
 
 ### What is verified, and what is not
 
-The `app` module has still never been through a real Android build — this project was written in an
-environment with no Android SDK and no access to Google's Maven repository. It has, however, been
-type-checked as far as that allows, and the gaps are worth knowing about.
+**The app builds.** CI assembles a debug APK from a clean checkout
+([workflow](.github/workflows/build.yml)), so the whole chain resolves and compiles: AGP 8.5.2,
+Compose, Room with its KSP processor, ML Kit and PDFBox. The debug APK is about 44 MB, which is what an
+unshrunk debug build of `material-icons-extended` plus ML Kit's bundled Latin model plus PDFBox costs;
+a release build with R8 is a great deal smaller.
 
-**Verified:**
+The engine's 77 tests run in a separate job with no Android SDK at all, so they still report when the
+app build fails.
 
-- **Every Kotlin file in `app/` type-checks**, Compose UI included, against the real Compose compiler
-  plugin and the Compose 1.7 API — Compose Multiplatform publishes the same `androidx.compose.*`
-  surface to Maven Central, which stands in for the androidx artifacts. That covers `@Composable`
-  context rules, parameter names, lambda receivers and types throughout the UI.
-- **Every call the app makes into the detection engine**, against the engine's real compiled classes.
-- All coroutine and `Flow` usage, against real `kotlinx-coroutines`.
-- **Room SQL against the schema**: all 21 `@Query` statements resolve — tables, columns and every
-  `:bind` parameter — the `@Database` entity list matches the `@Entity` classes, `@Index` and
-  `primaryKeys` name columns that exist, and every entity has a primary key.
-- Manifest resource references all resolve; no API newer than `minSdk` 24 is used; zero compiler
-  warnings.
-- The engine's own 77 tests pass.
+Also checked, mechanically: manifest resource references resolve, no API newer than `minSdk` 24 is used,
+and the build is free of compiler warnings.
 
-**Not verified:**
+**Not verified: nothing has been run.** No emulator, no device, no real drawing set through the UI. The
+detection engine is tested thoroughly against synthetic sheets with known ground truth, but the
+end-to-end path — pick a PDF, render it, detect, inspect, reconcile, export — has never executed. Treat
+the first run on a real project as a shakedown, and expect the things that only appear on a device:
+memory pressure on a large sheet, permission and `Uri` lifetime behaviour, camera round-trips, and how
+long a twenty-sheet A0 set actually takes to scan.
 
-- **Room's annotation processor never ran.** The SQL/schema cross-check above covers its commonest
-  complaint, but not DAO return-type agreement or converter resolution. If anything fails first, expect
-  it to be here.
-- **Android framework APIs were represented by hand-written stubs** (Activity, `Uri`, `Bitmap`,
-  `PdfRenderer`, Room annotations, ML Kit, PDFBox, lifecycle, navigation). Where a stub's signature
-  differs from the real SDK, that call site is unverified. The two most likely to differ are PDFBox's
-  `PDFTextStripper.writeString` override in `pdf/TextSources.kt` and the ML Kit coordinate below.
-- Compose Multiplatform 1.7.0 is the same API as androidx Compose 1.7.x but not byte-identical; a small
-  delta is possible, most likely an `@OptIn` requirement on an experimental API.
-- Resource merging, R8, packaging, and anything needing `android.jar` at a given API level.
-- **Nothing has been run.** No emulator, no device, no screenshot.
-
-`com.google.mlkit:text-recognition` is the one dependency coordinate that could not be checked against a
-live repository (the OCR fallback for scanned sheets). If it fails to resolve, delete that line from
-`app/build.gradle.kts` and the `fromOcr` function in `pdf/TextSources.kt`; nothing else depends on it,
-and detection falls back to the PDF's own text layer, which is what a CAD export always has.
+`com.google.mlkit:text-recognition:16.0.1` resolved in CI, so the OCR fallback is real. If you ever need
+to drop it, delete that line from `app/build.gradle.kts` and the `fromOcr` function in
+`pdf/TextSources.kt`; nothing else depends on it, and detection falls back to the PDF's own text layer.
 
 ## Using it
 
