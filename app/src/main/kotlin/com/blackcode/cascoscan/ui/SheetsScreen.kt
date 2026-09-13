@@ -14,7 +14,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.filled.CompareArrows
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
+import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -209,7 +210,10 @@ fun SheetsScreen(
                         Icon(Icons.Filled.Straighten, contentDescription = "Set scale")
                     }
                     IconButton(onClick = onReconcile) {
-                        Icon(Icons.Filled.CompareArrows, contentDescription = "Compare sheets")
+                        Icon(
+                            Icons.AutoMirrored.Filled.CompareArrows,
+                            contentDescription = "Compare sheets",
+                        )
                     }
                     IconButton(onClick = onReport) {
                         Icon(Icons.Filled.Assessment, contentDescription = "Report")
@@ -223,7 +227,7 @@ fun SheetsScreen(
                 ExtendedFloatingActionButton(
                     onClick = { viewModel.detectAll(force = false) },
                     text = { Text(if (summary.total == 0) "Scan all sheets" else "Scan remaining") },
-                    icon = { Icon(Icons.Filled.CompareArrows, contentDescription = null) },
+                    icon = { Icon(Icons.Filled.DocumentScanner, contentDescription = null) },
                 )
             }
         },

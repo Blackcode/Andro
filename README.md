@@ -102,19 +102,45 @@ The detection engine is a plain JVM library, so it needs nothing but a JDK:
 engine's 77 tests run in a bare container. Without the flag `:app` is included and Gradle will ask for
 an SDK.
 
-### First build
+### What is verified, and what is not
 
-Expect the `:app` module to need a few fixes. It was written in an environment with no Android SDK and
-no access to Google's Maven repository, so **it has never been compiled** — the engine is the part that
-is verified. Everything that decides whether a penetration is found is in `:detection:test`, which is
-green.
+The `app` module has still never been through a real Android build — this project was written in an
+environment with no Android SDK and no access to Google's Maven repository. It has, however, been
+type-checked as far as that allows, and the gaps are worth knowing about.
 
-If a compile error does appear it will be a signature or import mismatch against your AGP/Compose
-versions, not a design problem. The one dependency coordinate that could not be checked against a live
-repository is `com.google.mlkit:text-recognition` (the OCR fallback for scanned sheets); if it fails to
-resolve, delete that line from `app/build.gradle.kts` and the `fromOcr` function in
-`app/src/main/kotlin/com/blackcode/cascoscan/pdf/TextSources.kt`. Nothing else depends on it — detection
-falls back to the PDF's own text layer, which is what a CAD export always has.
+**Verified:**
+
+- **Every Kotlin file in `app/` type-checks**, Compose UI included, against the real Compose compiler
+  plugin and the Compose 1.7 API — Compose Multiplatform publishes the same `androidx.compose.*`
+  surface to Maven Central, which stands in for the androidx artifacts. That covers `@Composable`
+  context rules, parameter names, lambda receivers and types throughout the UI.
+- **Every call the app makes into the detection engine**, against the engine's real compiled classes.
+- All coroutine and `Flow` usage, against real `kotlinx-coroutines`.
+- **Room SQL against the schema**: all 21 `@Query` statements resolve — tables, columns and every
+  `:bind` parameter — the `@Database` entity list matches the `@Entity` classes, `@Index` and
+  `primaryKeys` name columns that exist, and every entity has a primary key.
+- Manifest resource references all resolve; no API newer than `minSdk` 24 is used; zero compiler
+  warnings.
+- The engine's own 77 tests pass.
+
+**Not verified:**
+
+- **Room's annotation processor never ran.** The SQL/schema cross-check above covers its commonest
+  complaint, but not DAO return-type agreement or converter resolution. If anything fails first, expect
+  it to be here.
+- **Android framework APIs were represented by hand-written stubs** (Activity, `Uri`, `Bitmap`,
+  `PdfRenderer`, Room annotations, ML Kit, PDFBox, lifecycle, navigation). Where a stub's signature
+  differs from the real SDK, that call site is unverified. The two most likely to differ are PDFBox's
+  `PDFTextStripper.writeString` override in `pdf/TextSources.kt` and the ML Kit coordinate below.
+- Compose Multiplatform 1.7.0 is the same API as androidx Compose 1.7.x but not byte-identical; a small
+  delta is possible, most likely an `@OptIn` requirement on an experimental API.
+- Resource merging, R8, packaging, and anything needing `android.jar` at a given API level.
+- **Nothing has been run.** No emulator, no device, no screenshot.
+
+`com.google.mlkit:text-recognition` is the one dependency coordinate that could not be checked against a
+live repository (the OCR fallback for scanned sheets). If it fails to resolve, delete that line from
+`app/build.gradle.kts` and the `fromOcr` function in `pdf/TextSources.kt`; nothing else depends on it,
+and detection falls back to the PDF's own text layer, which is what a CAD export always has.
 
 ## Using it
 

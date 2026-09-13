@@ -98,7 +98,11 @@ object TextRuns {
         }
 
         val sizes = HashMap<Int, Int>()
-        for (i in 0 until n) if (eligible[i]) sizes.merge(find(i), 1, Int::plus)
+        for (i in 0 until n) {
+            if (!eligible[i]) continue
+            val root = find(i)
+            sizes[root] = (sizes[root] ?: 0) + 1
+        }
         for (i in 0 until n) {
             if (eligible[i] && (sizes[find(i)] ?: 0) >= params.minMembers) inRun[i] = true
         }
