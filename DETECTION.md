@@ -1,7 +1,8 @@
 # How the detection works
 
-Two detectors, solving two different problems: reading the requirement off the drawing, and finding what
-was actually built. [Jump to the photographic one](#finding-penetrations-in-a-photograph).
+Three parts: reading the requirement off the drawing, finding what was actually built, and putting the two
+in the same space. Jump to [the photographic detector](#finding-penetrations-in-a-photograph) or to
+[the augmented reality](#putting-the-drawing-in-the-room).
 
 This is the part of the app that has to earn trust, so here is exactly what it does and why.
 
@@ -323,3 +324,102 @@ and holes photographed both square-on and at 60°.
 Asserted: holes are found and measured to within a few percent, the off-axis one included; shadows,
 joints, stains and bare texture are all rejected; the same hole measures the same in the lit corner and
 the shaded one; an uncalibrated photograph reports no size at all; and a blank wall reports nothing.
+
+
+---
+
+# Putting the drawing in the room
+
+Augmented reality turns the whole comparison from an estimation problem into a measurement one. Once the
+drawing is registered, a required penetration and a real hole are in the same metric space: there is no
+transform to fit, no scale to guess, no ordering to infer. They are either in the same place to within
+centimetres, or they are not.
+
+## Registration, and why two taps are enough
+
+`PlanRegistration` fits the transform from drawing pixels to world metres. It looks like a six-degree-of-
+freedom problem and is not, because two facts remove most of it:
+
+- the **plot scale** already fixes how many millimetres a drawing pixel is worth, so scale is not free;
+- the device knows **which way is up**, and a plan is a horizontal section, so it can only be rotated about
+  that axis.
+
+What remains is one angle and a translation — four unknowns, which two tapped points determine exactly.
+A third leaves a residual worth reading, and with only two the ratio of the separations is the one
+independent check available: if the points are 10% further apart in the room than on the sheet, the plot
+scale is wrong or the wrong features were tapped.
+
+## The orientation trap
+
+A plan has x to the right, **y increasing downwards**, and is drawn as seen from above. So going from page x
+to page y turns *clockwise* viewed from above, which in vectors is `dirX × dirY = -up`. Working the world
+basis out from that makes the fit a pure rotation with no reflection to resolve.
+
+That matters more than it sounds. Two control points cannot distinguish a reflection from a rotation — both
+fit the references perfectly — and a mirrored plan puts every penetration on the wrong side of the room
+while looking entirely plausible. There is a test that builds control points from an independently written
+forward model and checks that a point *below* the reference line on the page stays below it in the room.
+
+## Height is the plan's blind spot
+
+A horizontal section fixes where on the floor a penetration is and says nothing about how high up a wall it
+sits. So:
+
+- a **slab** penetration is a point, placed exactly, and matched in three dimensions;
+- a **wall** penetration is a vertical line. Its marker floats at the viewer's own height with a dashed
+  vertical guide, and it is matched on horizontal position alone.
+
+Pinning a wall marker to a specific height would be inventing information the drawing does not carry, and
+matching on a height it never knew would manufacture findings.
+
+## Measuring without a calibration step
+
+This is the quiet advantage over working from photographs. Measuring a hole in a still picture needs the
+scale supplied by hand — two taps on something of known length, *per shot*, because millimetres per pixel
+depends entirely on standing distance. In a tracked session that distance is already known: ARCore reports
+where the surface is, the camera reports its focal length in pixels, and `ArPhotogrammetry` closes it with
+similar triangles. It re-derives itself correctly every time the auditor moves.
+
+The trap is the focal length's units. Detection runs on a reduced copy of the frame, so the focal length
+must be scaled to that copy; using the full-resolution value against reduced pixels understates every
+diameter by exactly the reduction factor. There is a test for that specific mistake.
+
+## Keeping the hard part off the GL thread
+
+ARCore answers "what is under this pixel" directly, but only against a live `Frame`, on the thread that
+produced it — and detecting holes takes long enough that the frame is gone by the time there is anything to
+ask about.
+
+So the frame is used for one thing: a **single hit test at the centre of the view**, which yields the
+surface being looked at. Everything after that is arithmetic — `ArRayCaster` casts a ray through each
+detected hole and intersects it with that surface — and arithmetic can be tested, which the GL thread
+cannot. The assumption it buys is that the holes in one view are on one surface, which is what a wall or a
+slab is.
+
+The sign that would be hardest to find on a device is handled explicitly: the camera looks down its own −Z
+with +Y up, while image coordinates run +y *down*. Getting it wrong mirrors every measurement about the
+horizon, so there is a test that a pixel below centre looks downwards.
+
+## What the overlay draws, and why in Compose
+
+The camera image is painted by OpenGL because ARCore requires the application to do it — one full-screen
+quad and a two-line shader, and nothing else in GL. Every marker, label and control is ordinary Compose
+drawn on top from positions projected on the CPU.
+
+The live camera pose is held as Compose state and read *inside* the `Canvas` draw lambda, so a new frame
+costs a redraw and not a recomposition of the screen. The same value in a `StateFlow` collected by the
+composable would recompose the whole subtree sixty times a second.
+
+Markers are sized from the penetration's real diameter at its real distance, sorted far-to-near so the
+closest is painted last, and dropped when they fall behind the camera or beyond about twelve metres —
+beyond which an overlay is clutter rather than guidance.
+
+## Accuracy, as measured
+
+31 tests over the registration, projection, target placement, 3-D matching and photogrammetry — against an
+independently written forward model rather than the code agreeing with itself. Asserted among other things:
+two reference points place every other point to within a centimetre; the plan is never mirrored; a wrong
+plot scale is reported rather than absorbed; a badly tapped third point shows as a residual; a tilted
+gravity vector still yields a flat plan; a point behind the camera projects to nothing rather than to a
+mirrored position; marker size falls off in proportion to distance; and a wall hole matches at any height
+while a slab hole does not.

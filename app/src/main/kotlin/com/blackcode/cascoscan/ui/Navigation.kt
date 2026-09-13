@@ -18,12 +18,14 @@ object Routes {
     const val RECONCILE = "reconcile/{projectId}"
     const val REPORT = "report/{projectId}"
     const val SITE_SCAN = "sitescan/{projectId}/{sheetId}"
+    const val AR_SCAN = "ar/{projectId}/{sheetId}"
 
     fun sheets(projectId: String) = "project/$projectId"
     fun drawing(projectId: String, sheetId: String) = "sheet/$projectId/$sheetId"
     fun reconcile(projectId: String) = "reconcile/$projectId"
     fun report(projectId: String) = "report/$projectId"
     fun siteScan(projectId: String, sheetId: String) = "sitescan/$projectId/$sheetId"
+    fun arScan(projectId: String, sheetId: String) = "ar/$projectId/$sheetId"
 }
 
 @Composable
@@ -59,7 +61,16 @@ fun CascoScanNavHost(
                 projectId = projectId,
                 sheetId = sheetId,
                 onBack = { navController.popBackStack() },
-                onScanOnSite = { navController.navigate(Routes.siteScan(projectId, sheetId)) },
+                onScanOnSite = { navController.navigate(Routes.arScan(projectId, sheetId)) },
+                onPhotoScan = { navController.navigate(Routes.siteScan(projectId, sheetId)) },
+            )
+        }
+        composable(Routes.AR_SCAN) { entry ->
+            com.blackcode.cascoscan.ar.ArScanScreen(
+                container = container,
+                projectId = entry.arguments?.getString("projectId").orEmpty(),
+                sheetId = entry.arguments?.getString("sheetId").orEmpty(),
+                onBack = { navController.popBackStack() },
             )
         }
         composable(Routes.SITE_SCAN) { entry ->

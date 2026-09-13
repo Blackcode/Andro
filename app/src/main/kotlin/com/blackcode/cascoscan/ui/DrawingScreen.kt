@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.CropFree
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -271,6 +272,7 @@ fun DrawingScreen(
     sheetId: String,
     onBack: () -> Unit,
     onScanOnSite: () -> Unit = {},
+    onPhotoScan: () -> Unit = {},
 ) {
     val viewModel = screenViewModel(key = sheetId) {
         DrawingViewModel(container.context, projectId, sheetId, container.repository, container.detectionConfig)
@@ -317,9 +319,16 @@ fun DrawingScreen(
                 actions = {
                     IconButton(onClick = onScanOnSite) {
                         Icon(
-                            Icons.Filled.PhotoCamera,
-                            contentDescription = "Inspect this area on site with the camera",
+                            Icons.Filled.ViewInAr,
+                            contentDescription = "Inspect on site in augmented reality",
                             tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    IconButton(onClick = onPhotoScan) {
+                        Icon(
+                            Icons.Filled.PhotoCamera,
+                            contentDescription = "Inspect from a photograph, without augmented reality",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     IconButton(

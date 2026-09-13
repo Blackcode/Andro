@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <!-- "optional" rather than "required": ARCore supports a limited set of devices, and a tablet that
+         cannot run it should still install and be able to review a drawing set and report on it. -->
+    <uses-feature android:name="android.hardware.camera.ar" android:required="false" />
 
     <application
         android:name=".CascoScanApp"
@@ -33,6 +36,8 @@
                 <data android:mimeType="application/pdf" />
             </intent-filter>
         </activity>
+
+        <meta-data android:name="com.google.ar.core" android:value="optional" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

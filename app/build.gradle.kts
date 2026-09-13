@@ -73,6 +73,9 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 
+    // Augmented reality: tracks the phone in the room so the drawing can be pinned to the walls.
+    implementation(libs.arcore)
+
     // The camera side: this is how the app sees what was actually built.
     implementation(libs.camera.core)
     implementation(libs.camera.camera2)
