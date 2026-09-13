@@ -44,30 +44,77 @@ where it can be tested without an emulator; `app/` is glue, storage and UI.
 
 ## Building
 
-Requires the Android SDK (API 34) and JDK 17+.
+### What you need
+
+| | |
+|---|---|
+| JDK | 17 or 21 (AGP 8.5 requires 17+) |
+| Android SDK | platform 34, build-tools 34.0.0 |
+| Network | Maven Central **and** Google's Maven (`dl.google.com`) — AGP, Compose, Room and ML Kit all come from Google's repository |
+
+### The easy way
+
+Open the project folder in Android Studio (Ladybug or newer), let it sync — it will offer to install
+the SDK bits it is missing — and press Run. That is the whole procedure.
+
+### From the command line
+
+Point Gradle at your SDK, either with an environment variable:
 
 ```bash
-./gradlew :app:assembleDebug      # or open the project in Android Studio
+export ANDROID_HOME=$HOME/Android/Sdk        # macOS: ~/Library/Android/sdk
 ```
 
-The engine builds and tests anywhere a JDK exists, with no Android SDK at all:
+or by creating `local.properties` in the project root (this file is git-ignored, and Android Studio
+writes it for you):
+
+```properties
+sdk.dir=/home/you/Android/Sdk
+```
+
+Then:
 
 ```bash
-gradle -Pcascoscan.includeApp=false :detection:test
+./gradlew :app:assembleDebug                 # APK -> app/build/outputs/apk/debug/
+./gradlew :app:installDebug                  # build and install on a connected device
 ```
 
-`settings.gradle.kts` includes `:app` only when it can find an Android SDK, so the engine's tests keep
-working in a bare CI container. Force either way with `-Pcascoscan.includeApp=true|false`.
+### Headless or CI, with no Android Studio
 
-### State of the build
+```bash
+# Command-line tools, then the two packages this project needs.
+export ANDROID_HOME=$HOME/android-sdk
+sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
 
-The engine is compiled and its full test suite is green. **The `app` module has not been compiled**:
-it was written in an environment with no Android SDK and no access to Google's Maven repository, so
-AGP, Compose, Room and ML Kit could not be resolved. Expect to fix the ordinary things a first build
-turns up. The one dependency coordinate that could not be checked against a repository is
-`com.google.mlkit:text-recognition` (the OCR fallback for scanned sheets) — if it does not resolve,
-deleting that line from `app/build.gradle.kts` and `TextSources.fromOcr` removes the feature and
-nothing else: detection falls back to the PDF's own text layer, which is what a CAD export always has.
+./gradlew :app:assembleDebug
+```
+
+### Just the engine, with no Android toolchain at all
+
+The detection engine is a plain JVM library, so it needs nothing but a JDK:
+
+```bash
+./gradlew -Pcascoscan.includeApp=false :detection:test
+```
+
+`-Pcascoscan.includeApp=false` drops the `:app` module from the build entirely, which is how the
+engine's 77 tests run in a bare container. Without the flag `:app` is included and Gradle will ask for
+an SDK.
+
+### First build
+
+Expect the `:app` module to need a few fixes. It was written in an environment with no Android SDK and
+no access to Google's Maven repository, so **it has never been compiled** — the engine is the part that
+is verified. Everything that decides whether a penetration is found is in `:detection:test`, which is
+green.
+
+If a compile error does appear it will be a signature or import mismatch against your AGP/Compose
+versions, not a design problem. The one dependency coordinate that could not be checked against a live
+repository is `com.google.mlkit:text-recognition` (the OCR fallback for scanned sheets); if it fails to
+resolve, delete that line from `app/build.gradle.kts` and the `fromOcr` function in
+`app/src/main/kotlin/com/blackcode/cascoscan/pdf/TextSources.kt`. Nothing else depends on it — detection
+falls back to the PDF's own text layer, which is what a CAD export always has.
 
 ## Using it
 
