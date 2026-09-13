@@ -90,6 +90,13 @@ yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
 ./gradlew :app:assembleDebug
 ```
 
+### Getting an APK without setting anything up
+
+Push the branch and GitHub Actions builds it: `.github/workflows/build.yml` installs the SDK, runs
+`:app:assembleDebug`, and attaches the APK to the run as an artifact named **cascoscan-debug-apk**
+(Actions tab -> the run -> Artifacts). The same workflow runs the engine's tests in a separate job that
+needs no Android SDK at all. If the build fails, the run also carries `app-build-reports`.
+
 ### Just the engine, with no Android toolchain at all
 
 The detection engine is a plain JVM library, so it needs nothing but a JDK:
