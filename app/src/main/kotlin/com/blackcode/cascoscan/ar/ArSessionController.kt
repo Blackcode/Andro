@@ -10,6 +10,7 @@ import com.blackcode.cascoscan.detect.GrayImage
 import com.google.ar.core.Config
 import com.google.ar.core.Frame
 import com.google.ar.core.Plane
+import com.google.ar.core.Pose
 import com.google.ar.core.Session
 import com.google.ar.core.TrackingState
 import java.util.concurrent.atomic.AtomicBoolean
@@ -68,13 +69,16 @@ class ArSessionController(private val context: Context) {
             val created = Session(context)
             created.configure(
                 Config(created).apply {
+                    // ARCore's setters return Config for chaining, so Kotlin synthesises no property for
+                    // them; they have to be called by name.
+                    //
                     // The newest image every frame: the auditor is moving, and a stale frame would put
                     // markers where the wall was a moment ago.
-                    updateMode = Config.UpdateMode.LATEST_CAMERA_IMAGE
-                    focusMode = Config.FocusMode.AUTO
+                    setUpdateMode(Config.UpdateMode.LATEST_CAMERA_IMAGE)
+                    setFocusMode(Config.FocusMode.AUTO)
                     // Walls and slabs, which is the whole subject matter.
-                    planeFindingMode = Config.PlaneFindingMode.HORIZONTAL_AND_VERTICAL
-                    lightEstimationMode = Config.LightEstimationMode.DISABLED
+                    setPlaneFindingMode(Config.PlaneFindingMode.HORIZONTAL_AND_VERTICAL)
+                    setLightEstimationMode(Config.LightEstimationMode.DISABLED)
                 },
             )
             session = created
@@ -168,16 +172,13 @@ class ArSessionController(private val context: Context) {
         camera.getViewMatrix(view, 0)
         camera.getProjectionMatrix(projection, 0, NEAR_M, FAR_M)
         val pose = camera.pose
-        val x = FloatArray(3).also { pose.getXAxis(it, 0) }
-        val y = FloatArray(3).also { pose.getYAxis(it, 0) }
-        val z = FloatArray(3).also { pose.getZAxis(it, 0) }
-        val t = FloatArray(3).also { pose.getTranslation(it, 0) }
+        // cameraAxes() already flips Z, because ARCore's camera looks down its own -Z.
+        val (right, up, forward) = pose.quaternion().cameraAxes()
         return EngineCamera(
-            position = Vec3(t[0].toDouble(), t[1].toDouble(), t[2].toDouble()),
-            right = Vec3(x[0].toDouble(), x[1].toDouble(), x[2].toDouble()),
-            up = Vec3(y[0].toDouble(), y[1].toDouble(), y[2].toDouble()),
-            // ARCore's camera looks down its own -Z.
-            forward = Vec3(-z[0].toDouble(), -z[1].toDouble(), -z[2].toDouble()),
+            position = pose.translation(),
+            right = right,
+            up = up,
+            forward = forward,
             viewProjection = Mat4.fromColumnMajor(projection) * Mat4.fromColumnMajor(view),
             viewportWidth = viewportWidth,
             viewportHeight = viewportHeight,
@@ -195,12 +196,11 @@ class ArSessionController(private val context: Context) {
         }
         val chosen = planeHit ?: hits.firstOrNull() ?: return null
         val pose = chosen.hitPose
-        val t = FloatArray(3).also { pose.getTranslation(it, 0) }
         // A plane's pose has its +Y along the surface normal.
-        val n = FloatArray(3).also { pose.getYAxis(it, 0) }
+        val (_, normal, _) = pose.quaternion().basis()
         return SurfaceHit(
-            point = Vec3(t[0].toDouble(), t[1].toDouble(), t[2].toDouble()),
-            normal = Vec3(n[0].toDouble(), n[1].toDouble(), n[2].toDouble()).normalised(),
+            point = pose.translation(),
+            normal = normal.normalised(),
             isPlane = planeHit != null,
         )
     }
@@ -219,10 +219,7 @@ class ArSessionController(private val context: Context) {
         frame.camera.imageIntrinsics.getPrincipalPoint(principal, 0)
 
         val pose = frame.camera.pose
-        val x = FloatArray(3).also { pose.getXAxis(it, 0) }
-        val y = FloatArray(3).also { pose.getYAxis(it, 0) }
-        val z = FloatArray(3).also { pose.getZAxis(it, 0) }
-        val t = FloatArray(3).also { pose.getTranslation(it, 0) }
+        val (right, up, forward) = pose.quaternion().cameraAxes()
 
         return CaptureBundle(
             gray = gray,
@@ -235,10 +232,10 @@ class ArSessionController(private val context: Context) {
                 imageHeight = dimensions[1],
             ),
             pose = CameraPose(
-                position = Vec3(t[0].toDouble(), t[1].toDouble(), t[2].toDouble()),
-                right = Vec3(x[0].toDouble(), x[1].toDouble(), x[2].toDouble()),
-                up = Vec3(y[0].toDouble(), y[1].toDouble(), y[2].toDouble()),
-                forward = Vec3(-z[0].toDouble(), -z[1].toDouble(), -z[2].toDouble()),
+                position = pose.translation(),
+                right = right,
+                up = up,
+                forward = forward,
             ),
             surface = hitCentre(frame),
             camera = camera,
@@ -287,6 +284,16 @@ class ArSessionController(private val context: Context) {
         "SecurityException" -> "Camera permission is needed for the augmented reality view."
         else -> t.message ?: "Augmented reality could not start on this device."
     }
+
+    /** ARCore's rotation, as the engine's quaternion. */
+    private fun Pose.quaternion() = Quaternion(
+        x = qx().toDouble(),
+        y = qy().toDouble(),
+        z = qz().toDouble(),
+        w = qw().toDouble(),
+    )
+
+    private fun Pose.translation() = Vec3(tx().toDouble(), ty().toDouble(), tz().toDouble())
 
     private companion object {
         const val TAG = "CascoScan/AR"

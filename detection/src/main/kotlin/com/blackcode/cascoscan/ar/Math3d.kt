@@ -115,3 +115,43 @@ data class Ray(val origin: Vec3, val direction: Vec3) {
         return if (t <= 0.0) null else at(t)
     }
 }
+
+/**
+ * A rotation as a unit quaternion, and the basis it turns the world axes into.
+ *
+ * Exists so the Android side never has to depend on which axis accessors a given ARCore version exposes:
+ * a pose's rotation is always available as four numbers, and the three axis vectors follow from them by
+ * arithmetic that can be tested here rather than discovered on a device.
+ */
+data class Quaternion(val x: Double, val y: Double, val z: Double, val w: Double) {
+
+    /** The rotated X, Y and Z axes: the columns of the equivalent rotation matrix. */
+    fun basis(): Triple<Vec3, Vec3, Vec3> {
+        val xx = x * x
+        val yy = y * y
+        val zz = z * z
+        val xy = x * y
+        val xz = x * z
+        val yz = y * z
+        val wx = w * x
+        val wy = w * y
+        val wz = w * z
+        val axisX = Vec3(1 - 2 * (yy + zz), 2 * (xy + wz), 2 * (xz - wy))
+        val axisY = Vec3(2 * (xy - wz), 1 - 2 * (xx + zz), 2 * (yz + wx))
+        val axisZ = Vec3(2 * (xz + wy), 2 * (yz - wx), 1 - 2 * (xx + yy))
+        return Triple(axisX, axisY, axisZ)
+    }
+
+    /**
+     * The camera basis ARCore's convention implies: the pose's X and Y axes, and **forward as the negated
+     * Z axis**, because an ARCore camera looks down its own -Z.
+     */
+    fun cameraAxes(): Triple<Vec3, Vec3, Vec3> {
+        val (axisX, axisY, axisZ) = basis()
+        return Triple(axisX, axisY, -axisZ)
+    }
+
+    companion object {
+        val IDENTITY = Quaternion(0.0, 0.0, 0.0, 1.0)
+    }
+}

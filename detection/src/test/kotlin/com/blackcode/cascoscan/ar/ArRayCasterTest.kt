@@ -137,3 +137,55 @@ class ArRayCasterTest {
         assertTrue(ray.origin.distanceTo(rotated.position) < 1e-9)
     }
 }
+
+/**
+ * Deriving the camera's axes from its rotation, so the Android side depends on four numbers rather than on
+ * which axis accessors a given ARCore version happens to expose.
+ */
+class QuaternionTest {
+
+    private fun assertClose(expected: Vec3, actual: Vec3, what: String) {
+        assertTrue((expected - actual).length < 1e-9, "$what: expected $expected, got $actual")
+    }
+
+    @Test
+    fun `the identity rotation leaves the axes alone`() {
+        val (x, y, z) = Quaternion.IDENTITY.basis()
+        assertClose(Vec3(1.0, 0.0, 0.0), x, "x")
+        assertClose(Vec3(0.0, 1.0, 0.0), y, "y")
+        assertClose(Vec3(0.0, 0.0, 1.0), z, "z")
+    }
+
+    @Test
+    fun `a quarter turn about up takes x to minus z`() {
+        val half = Math.toRadians(90.0) / 2
+        val q = Quaternion(0.0, kotlin.math.sin(half), 0.0, kotlin.math.cos(half))
+        val (x, y, z) = q.basis()
+        assertClose(Vec3(0.0, 0.0, -1.0), x, "x")
+        assertClose(Vec3(0.0, 1.0, 0.0), y, "y")
+        assertClose(Vec3(1.0, 0.0, 0.0), z, "z")
+    }
+
+    @Test
+    fun `the basis stays right handed`() {
+        val q = Quaternion(0.183, 0.365, 0.548, 0.730).let { raw ->
+            val length = kotlin.math.sqrt(raw.x * raw.x + raw.y * raw.y + raw.z * raw.z + raw.w * raw.w)
+            Quaternion(raw.x / length, raw.y / length, raw.z / length, raw.w / length)
+        }
+        val (x, y, z) = q.basis()
+        assertTrue(abs(x.length - 1.0) < 1e-9, "x not unit: ${x.length}")
+        assertTrue(abs(y.length - 1.0) < 1e-9, "y not unit: ${y.length}")
+        assertTrue(abs(z.length - 1.0) < 1e-9, "z not unit: ${z.length}")
+        assertTrue(abs(x dot y) < 1e-9, "x and y not perpendicular")
+        assertClose(z, x cross y, "right-handedness")
+    }
+
+    @Test
+    fun `the camera looks down its own negated z`() {
+        // ARCore's convention, and the sign that would otherwise point every marker behind the viewer.
+        val (right, up, forward) = Quaternion.IDENTITY.cameraAxes()
+        assertClose(Vec3(1.0, 0.0, 0.0), right, "right")
+        assertClose(Vec3(0.0, 1.0, 0.0), up, "up")
+        assertClose(Vec3(0.0, 0.0, -1.0), forward, "forward")
+    }
+}
