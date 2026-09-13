@@ -8,27 +8,42 @@ building does not have comes out as a list of findings and a marked-up sheet you
 
 ## What it does
 
-**Reads the drawing set.** A multi-page PDF, rasterised sheet by sheet with the platform's own PDF
-renderer. Nothing leaves the device.
+**Reads the drawing set** — a multi-page PDF, rasterised sheet by sheet with the platform's own PDF
+renderer — and finds the penetrations it requires: sleeves, cores, wall and slab openings. This is the
+*requirement* side, what should exist. Nothing leaves the device.
 
-**Finds the penetrations.** Not "finds circles" — the detector distinguishes a sleeve symbol from the
-dimension text, the column, the grid bubble and the title block, and it finds symbols drawn *across*
-walls, which plain shape detection cannot see at all because they are part of the wall's own ink. Each
-find carries a confidence and an explanation of how it got there. See [DETECTION.md](DETECTION.md).
+**Looks at the building.** You stand where the work is, photograph the wall or slab, and the app finds
+the holes that are actually there — the *real* penetrations. Tap two points a known distance apart and it
+measures their diameters too.
 
-**Works out what is missing.** Two sheets are aligned and compared: everything the first sheet
-requires and the second does not contain is reported as missing, positioned where it should have been.
-Openings that exist but were never asked for are reported too — on a casco audit an unrequested hole
-is a structural change.
+**Says what is missing.** The holes in the photograph are matched against the penetrations the drawing
+asks for in that area. Anything required and not found is a finding, positioned and sized from the
+drawing. Holes that exist but were never asked for are reported as well: on a casco audit an unrequested
+opening is a structural change.
 
-**Keeps the audit.** Every penetration is a checklist row: present, missing, wrong size, wrong
-position, obstructed, not sealed, not applicable. With a note and site photographs.
+**Keeps the audit.** Every penetration is a checklist row — present, missing, wrong size, wrong position,
+obstructed, not sealed, not applicable — with the note and the photograph that justify the verdict.
 
-**Produces the deliverable.** A single self-contained HTML report with the marked-up sheets embedded,
-plus a CSV for the office. Both state plainly what the machine was unsure about.
+**Produces the deliverable.** One self-contained HTML report with the marked-up sheets embedded, plus a
+CSV for the office. Both state plainly what the machine was unsure about.
 
-**Learns from you.** Confirm or reject a detection and the shape is remembered for the rest of the
-project. A drawing set is internally consistent, so one correction on sheet 3 improves sheets 4 to 20.
+**Learns from you.** Correct a detection on the drawing and the shape is remembered for the rest of the
+project: a drawing set is internally consistent, so one correction on sheet 3 improves sheets 4 to 20.
+
+### The two detectors
+
+They solve different problems and share only their primitives and their explainable scoring.
+
+**On the drawing** the task is telling a penetration symbol from everything else circular and
+rectangular on a dense sheet — column bubbles, grid marks, the digit 0 — and finding the sleeves drawn
+*through* walls, which share ink with the wall and are invisible to plain shape detection.
+
+**In the photograph** there are no symbols and no conventions: there is a grey wall, uneven light, and a
+dark patch that is either a hole or a shadow. They are the same shape, the same size, as convex, and
+under a work lamp as dark. What separates them is that a hole's edge is abrupt and a shadow's is not, so
+edge width is measured properly and weighted to outvote everything else.
+
+Both are described in [DETECTION.md](DETECTION.md).
 
 ## Layout
 
@@ -137,43 +152,62 @@ to drop it, delete that line from `app/build.gradle.kts` and the `fromOcr` funct
 
 ## Using it
 
-1. **Add the drawing set** and give it the plot scale. The scale is not a formality — it is what turns
-   a 17-pixel ring into "a 110 mm sleeve", and it is the single biggest lever on accuracy. The dialog
-   tells you the smallest opening that can still be found at each scale.
-2. **Scan the sheets.** A sheet is rasterised in tiles, so an A0 plan at 300 dpi does not have to fit
-   in memory. Progress is per tile.
-3. **Review.** Detections the app is unsure about are ringed with a dashed line and listed under
-   *Unsure*. Tap one to see why it was flagged, term by term. Reject it and the app learns.
-   If the title block or a legend is producing rubbish, exclude that area and re-scan.
-4. **Compare sheets** to find what is missing. The app tries to line the two sheets up by itself and
-   tells you how well it fitted; if the fit is poor — which is likely when the second sheet is missing
-   most of its openings — tap two common points instead, such as a pair of grid intersections.
-5. **Walk the building**, filtering to *To inspect*, and record what you find. Add anything the scan
-   missed by tapping the drawing.
+1. **Add the drawing set** and give it the plot scale. The scale is what turns a 17-pixel ring into "a
+   110 mm sleeve", and it is the biggest single lever on accuracy; the dialog tells you the smallest
+   opening still findable at each scale.
+2. **Scan the sheets.** Each is rasterised in tiles, so an A0 plan at 300 dpi need not fit in memory.
+3. **Review.** Detections the app is unsure about are ringed with a dashed line. Tap one to see why it
+   was flagged, term by term; reject it and the app learns. Exclude the title block if it produces
+   rubbish, and re-scan.
+4. **Go to the wall and press the camera button.** Four steps: tap the drawing where you are standing,
+   photograph the wall, tap two points a known distance apart, then check the matches and record them.
+   - Locating yourself is what makes the comparison mean anything — only the penetrations near that point
+     are compared, so the rest of the floor is not reported missing.
+   - Calibration is offered, not demanded. Skip it and the app still says which holes are there; it
+     simply makes no claim about their size.
+   - Choose **along a wall** or **slab from above**. A plan draws a wall as a line, so a hole's height
+     does not exist on the drawing and the two images cannot be lined up; the holes are matched in order
+     along the wall instead. For a slab shot from above they can be lined up, and are.
+5. **Anything the camera missed** can be added by tapping the drawing, and any row can be set by hand.
 6. **Build the report** and share it.
 
 ## Honest limitations
 
-- **Nothing is claimed to be exhaustive.** The report distinguishes what a person confirmed from what
-  the machine guessed, and never presents an unreviewed detection as a finding. A penetration the
-  detector missed entirely cannot be reported — which is why adding one by hand is a first-class
-  action, and why the review step matters.
-- **Coarse plot scales genuinely lose small openings.** At 1:200, 300 dpi puts a 110 mm sleeve at 6.5
-  pixels, which is below what any shape measurement can resolve. The app says so rather than quietly
-  missing them.
-- **Symbols conventions vary by office.** The scoring weights are the tunable surface
-  (`ScoringWeights`), and the prototype learning adapts to a set within a few corrections. A drawing
-  set using a symbol the classifier has no form for (say, a filled triangle) will need a weight change.
-- **A scanned sheet is harder than a CAD export.** Measured on a simulated scan of the test sheet
-  (illumination gradient, grain, 3x3 blur): with the text layer recovered by OCR, all eight
-  penetrations are still found and accepted with nothing spurious; with no text at all, seven of eight
-  survive and up to two pieces of clutter can be accepted. Blur also inflates measured sizes by
-  10-15%, so declared label sizes are the ones to trust on a scan.
-- **Cross-sheet comparison needs both sheets to be scanned first**, and its verdicts are only as good
-  as the alignment — which is why the alignment quality is shown rather than hidden.
-- Rotated (non-axis-aligned) structure is handled for symbols but the structural-line pass looks for
-  axis-aligned runs, so a building on a 30° grid will keep more of its wall ink in the symbol pass and
-  produce more candidates for review.
+**On the photographic side:**
+
+- **Shadows are rejected by edge sharpness, so anything that blurs edges hurts.** Motion blur, a dirty
+  lens, heavy noise reduction in low light, or a photograph taken from far away all narrow the gap
+  between a hole's edge and a shadow's. Stand reasonably close, hold still, and light the wall.
+- **Sizes need calibration, and it is per photograph.** Millimetres per pixel depends on how far away you
+  were, so every shot needs its own two taps. Without them, holes are still found and still matched; no
+  size is reported and no size finding is raised.
+- **A steeply angled shot measures badly.** The major axis of the projected ellipse is the true diameter,
+  so an off-axis photograph still gives a size — but past about 60° the app marks the reading indicative
+  and withholds size findings rather than accusing anyone on the strength of it.
+- **Matching along a wall cannot tell identical holes apart.** If four identical sleeves are required and
+  you photograph three, order and size alone cannot say which is absent; the app pairs what it can and
+  you resolve the rest. Differing sizes, or a slab shot that can be lined up, remove the ambiguity.
+- **Colour is not used.** The detector works in greyscale, so a sleeve is recognised by its collar rather
+  than by being orange.
+- **A hole with light coming through it is not handled.** Detection looks for dark regions; an opening
+  onto a brightly lit room reads as bright and will be missed.
+
+**On the drawing side:**
+
+- Coarse plot scales genuinely lose small openings. At 1:200, 300 dpi puts a 110 mm sleeve at 6.5 pixels,
+  below what any shape measurement can resolve. The app says so rather than quietly missing them.
+- Symbol conventions vary by office. The scoring weights are the tunable surface, and the prototype
+  learning adapts within a few corrections; a set using a form the classifier has no shape for will need
+  a weight change.
+- A scanned sheet is harder than a CAD export: measured on a simulated scan, with OCR text all eight test
+  penetrations are still found; with no text at all, seven of eight survive and up to two pieces of
+  clutter can be accepted. Blur also inflates measured sizes by 10–15%, so declared label sizes are the
+  ones to trust on a scan.
+- Non-axis-aligned structure keeps more wall ink in the symbol pass, so a building on a 30° grid produces
+  more candidates for review.
+
+**Throughout:** nothing is claimed to be exhaustive. The report separates what a person confirmed from
+what the machine guessed, and never presents an unreviewed detection as a finding.
 
 ## Privacy
 

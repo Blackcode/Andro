@@ -270,6 +270,7 @@ fun DrawingScreen(
     projectId: String,
     sheetId: String,
     onBack: () -> Unit,
+    onScanOnSite: () -> Unit = {},
 ) {
     val viewModel = screenViewModel(key = sheetId) {
         DrawingViewModel(container.context, projectId, sheetId, container.repository, container.detectionConfig)
@@ -314,6 +315,13 @@ fun DrawingScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onScanOnSite) {
+                        Icon(
+                            Icons.Filled.PhotoCamera,
+                            contentDescription = "Inspect this area on site with the camera",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                     IconButton(
                         onClick = {
                             viewModel.setTapMode(

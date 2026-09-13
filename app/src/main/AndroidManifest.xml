@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Photographs of findings are taken through the system camera app, which needs no permission
-         of ours; the feature is optional so a tablet without a camera still installs. -->
+    <!-- Finding the penetrations that were actually built means looking at them, so the camera is
+         central rather than incidental. Not required, so a tablet without one can still review and
+         report on a drawing set. -->
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
     <application
         android:name=".CascoScanApp"

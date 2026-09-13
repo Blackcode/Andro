@@ -73,6 +73,14 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 
+    // The camera side: this is how the app sees what was actually built.
+    implementation(libs.camera.core)
+    implementation(libs.camera.camera2)
+    implementation(libs.camera.lifecycle)
+    implementation(libs.camera.view)
+    // Photographs carry their orientation in EXIF rather than in the pixels.
+    implementation(libs.androidx.exifinterface)
+
     // Exact text straight out of a CAD-exported PDF. Optional at runtime: the app falls back to OCR,
     // and then to no text at all, degrading detection rather than failing.
     implementation(libs.pdfbox.android)

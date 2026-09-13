@@ -17,11 +17,13 @@ object Routes {
     const val DRAWING = "sheet/{projectId}/{sheetId}"
     const val RECONCILE = "reconcile/{projectId}"
     const val REPORT = "report/{projectId}"
+    const val SITE_SCAN = "sitescan/{projectId}/{sheetId}"
 
     fun sheets(projectId: String) = "project/$projectId"
     fun drawing(projectId: String, sheetId: String) = "sheet/$projectId/$sheetId"
     fun reconcile(projectId: String) = "reconcile/$projectId"
     fun report(projectId: String) = "report/$projectId"
+    fun siteScan(projectId: String, sheetId: String) = "sitescan/$projectId/$sheetId"
 }
 
 @Composable
@@ -50,7 +52,18 @@ fun CascoScanNavHost(
             )
         }
         composable(Routes.DRAWING) { entry ->
+            val projectId = entry.arguments?.getString("projectId").orEmpty()
+            val sheetId = entry.arguments?.getString("sheetId").orEmpty()
             DrawingScreen(
+                container = container,
+                projectId = projectId,
+                sheetId = sheetId,
+                onBack = { navController.popBackStack() },
+                onScanOnSite = { navController.navigate(Routes.siteScan(projectId, sheetId)) },
+            )
+        }
+        composable(Routes.SITE_SCAN) { entry ->
+            com.blackcode.cascoscan.site.SiteScanScreen(
                 container = container,
                 projectId = entry.arguments?.getString("projectId").orEmpty(),
                 sheetId = entry.arguments?.getString("sheetId").orEmpty(),

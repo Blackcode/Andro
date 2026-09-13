@@ -297,6 +297,25 @@ class AuditRepository(
     suspend fun findAlignment(referenceSheetId: String, targetSheetId: String): AlignmentEntity? =
         withContext(Dispatchers.IO) { database.alignments().find(referenceSheetId, targetSheetId) }
 
+    /**
+     * Records what a site photograph showed against the drawing's requirements.
+     *
+     * One call so that a status, the reason for it and the photograph that justifies it are written
+     * together - an audit finding without its evidence is not worth much, and the two drifting apart is
+     * exactly the sort of thing that happens when the caller has to remember three steps.
+     */
+    suspend fun applySiteFindings(
+        projectId: String,
+        sheetId: String,
+        updates: List<Pair<Penetration, com.blackcode.cascoscan.site.SiteMatcher.Update>>,
+    ) = withContext(Dispatchers.IO) {
+        for ((penetration, update) in updates) {
+            var row = com.blackcode.cascoscan.detect.Audit.setStatus(penetration, update.status, update.note)
+            update.photoUri?.let { row = com.blackcode.cascoscan.detect.Audit.addPhoto(row, it) }
+            database.penetrations().upsert(Mappers.toEntity(row, projectId, sheetId))
+        }
+    }
+
     /** Adds the rows a reconciliation produced, replacing any earlier reconciliation of the same pair. */
     suspend fun applyReconciliation(
         projectId: String,

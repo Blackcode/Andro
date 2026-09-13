@@ -1,5 +1,8 @@
 # How the detection works
 
+Two detectors, solving two different problems: reading the requirement off the drawing, and finding what
+was actually built. [Jump to the photographic one](#finding-penetrations-in-a-photograph).
+
 This is the part of the app that has to earn trust, so here is exactly what it does and why.
 
 The problem is not "find circles in an image". A casco drawing is dense line art in which a great many
@@ -202,3 +205,121 @@ Two bugs the scan test caught, as illustrations of what it is for:
 `DetectionConfig` holds the geometric limits (plausible sizes, run lengths, gap tolerances, thresholds)
 and `ScoringWeights` the evidence weights. Both are plain data classes with documented defaults, passed
 in rather than referenced globally, so a project-level override is a `copy()`.
+
+
+---
+
+# Finding penetrations in a photograph
+
+The drawing says what should exist. This says what does.
+
+It is not the same problem as reading line art, and almost none of the reasoning carries over. There are
+no symbols and no conventions. There is a grey wall, light falling unevenly across it, and a dark patch
+that is either a hole or a shadow — and a shadow is the same shape as a hole, the same size, just as
+convex, and under a single work lamp very nearly as dark.
+
+## Removing the light, rather than compensating for it
+
+`GrayMorphology.blackTopHat` closes the image with a kernel wider than the largest hole. Closing fills
+dark features smaller than its kernel, so the result is the wall as it would look with no holes in it —
+the illumination field. Subtracting the photograph from that leaves the holes against a flat zero however
+the wall happened to be lit.
+
+A locally adaptive threshold cannot do this job. With a window smaller than the hole, the middle of a
+200 mm hole has nothing bright nearby to be dark *relative to*, so it comes out hollow or vanishes
+entirely. Both morphology passes are separable and use a monotonic deque, so a deliberately huge kernel
+still costs one pass per axis.
+
+## Measuring a hole from wherever you were standing
+
+`Ellipse.fromMoments` fits the equivalent ellipse of inertia — for a uniform ellipse the central moments
+are `mu20 = a²/4` and `mu02 = b²/4`, so the eigenvalues of the covariance matrix give the axes back as
+`2·sqrt(lambda)`. Moments use every pixel rather than just the outline, which is far steadier on a ragged
+boundary than fitting a conic to edge points.
+
+The geometry that makes this practical: **a circular hole photographed off-axis projects to an ellipse
+whose major axis is still the true diameter.** Tilt foreshortens one direction only, so the minor axis
+shrinks by cos(tilt) and the major axis is untouched. So a usable diameter comes out of a shot taken from
+wherever the auditor happened to be, and the axis ratio recovers how far off-axis that was — worth
+knowing in itself, because past about 60° the app marks the reading indicative and withholds size
+findings.
+
+## The one measurement that matters
+
+Every term in the scoring model can be fully satisfied by a hard shadow: it is round, convex, the right
+size, far darker than the wall, and dark in absolute terms. **Edge width is the only thing that separates
+them**, so it is measured properly and weighted to outvote the rest of the model combined.
+
+`EdgeProfile` samples the intensity along the outward normal at 48 points around the boundary and records
+the distance over which it rises from 20% to 80% of the local range — the optical definition of edge
+width — taking the median so one occluded neighbour cannot drag the reading.
+
+The obvious shortcut, contrast divided by boundary gradient, was tried first and was nearly inert: the
+ring used as the "outside" reference still sits inside the penumbra, so a shadow edge measured about a
+third of its real width. Worth recording because the thresholds are stated in the units actually
+measured: a 20–80% rise is roughly 0.43 of the full width of a smooth transition, so an edge a human
+would call twelve pixels wide measures about five here. A void's edge comes in under 2 px even through
+lens and JPEG softening; a penumbra runs from 4 px upwards.
+
+## What else the scoring uses
+
+| Term | Weight | What it says |
+|---|---|---|
+| bias | −3.20 | most dark patches on a site are not holes |
+| hard edge | ±4.00 | the decisive one, above |
+| shape fit | +2.00 | matches its own fitted ellipse, or its oriented box |
+| shapeless | −1.60 | matches neither, applied in full rather than scaled by the fit |
+| contrast | ±1.10 | darker than the wall |
+| absolute darkness | ±1.20 | you can see *into* a hole; concrete texture is never near-black |
+| solidity | +1.00 | convex, not a ragged stain |
+| size | ±1.20 | plausible in millimetres, once calibrated |
+| sleeve ring | +0.60 | a collar, and only on a hard-edged opening |
+| elongation | −2.20 | plus a hard gate below a 0.12 axis ratio: cracks and joints |
+| clipped | −1.30 | only partly in frame, so shape and size are guesses |
+
+Round versus rectangular is decided by which the region actually matches: a solid ellipse fills its own
+fitted ellipse and only about 79% of its oriented box, and a solid rectangle does the reverse.
+
+## Deciding what is missing
+
+`SiteMatcher` compares the holes in a photograph with the penetrations the drawing requires *near where
+the auditor said they were standing* — without that narrowing the comparison is meaningless, since three
+holes would be matched against the whole sheet and the rest all reported missing.
+
+Two strategies, because neither works everywhere:
+
+- **Planar** fits a similarity transform from photograph to drawing by RANSAC. Right when the photograph
+  really is a flat view of the plane the drawing shows — a slab from above. With both sides calibrated the
+  scale is not a free parameter (it is `photoMmPerPx / drawingMmPerPx`), which is what lets RANSAC lock on
+  from two or three shared holes.
+- **Order and size** matches the two sequences along their dominant axis with no registration at all.
+  This is what a wall needs: the plan draws that wall as a line, so a hole's height does not exist on the
+  drawing and no 2-D transform can be fitted. Order is a real constraint — holes cannot swap places
+  between the drawing and the building.
+
+The sequence match is **scored, not counted**, and that distinction decides real cases. Given a wall
+wanting 110, 160, 200, 110 and a photograph showing 110, 200, 110, any tolerance loose enough to absorb
+photographic error also lets 160 pair with 200 — so two readings tie on the number of pairs and the wrong
+one can win. Maximising total size agreement against a gap cost prefers the reading where every pair
+matches well, and correctly names the 160 as the hole nobody drilled. The gap cost follows from the
+tolerance rather than being tuned, and brings a property worth having: a hole bored to the wrong size
+stays paired and is reported as the wrong size, instead of becoming a missing hole *and* an unrequested
+one at the same spot.
+
+Findings never rest on a measurement that cannot carry them. A size finding is withheld when the hole was
+photographed too far off-axis to measure, a detection too faint to trust is not evidence that a hole
+exists, and an empty photograph warns rather than quietly condemning a whole wall.
+
+## Accuracy, as measured
+
+Photographs of real buildings cannot go in a repository either, so the suite paints its own wall — and
+what matters is that it contains the *confusions* rather than just the targets. A detector that only sees
+holes on flat grey passes any test and fails on site.
+
+The synthetic wall carries: a hole and a shadow of identical size, darkness and shape side by side; a
+construction joint; a ragged damp patch; correlated concrete grain; light falling off across the frame;
+and holes photographed both square-on and at 60°.
+
+Asserted: holes are found and measured to within a few percent, the off-axis one included; shadows,
+joints, stains and bare texture are all rejected; the same hole measures the same in the lit corner and
+the shaded one; an uncalibrated photograph reports no size at all; and a blank wall reports nothing.

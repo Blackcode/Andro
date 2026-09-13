@@ -27,6 +27,7 @@ class CascoScanApp : Application() {
         /** Application context, for the screens that have to rasterise a page themselves. */
         val context: android.content.Context = application
         val detectionConfig: DetectionConfig = DetectionConfig()
+        val siteConfig: com.blackcode.cascoscan.site.SiteConfig = com.blackcode.cascoscan.site.SiteConfig()
         private val database = CascoDatabase.create(application)
         val repository = AuditRepository(application, database)
         val detection = DetectionService(application, repository)
