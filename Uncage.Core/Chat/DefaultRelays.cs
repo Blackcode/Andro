@@ -15,6 +15,17 @@ public static class DefaultRelays
 		"wss://offchain.pub",
 	];
 
+	/// <summary>
+	/// Public Blossom servers for encrypted attachments. Uploads go to all of them, so any one being
+	/// blocked or offline doesn't lose the file. Users can replace them in Settings.
+	/// </summary>
+	public static readonly IReadOnlyList<string> MediaServers =
+	[
+		"https://blossom.primal.net",
+		"https://blossom.band",
+		"https://24242.io",
+	];
+
 	/// <summary>How many relays to advertise as our inbox (NIP-17 recommends a small list).</summary>
 	public const int InboxCount = 3;
 

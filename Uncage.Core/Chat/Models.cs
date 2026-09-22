@@ -1,4 +1,5 @@
 using Uncage.Core.Crypto;
+using Uncage.Core.Media;
 
 namespace Uncage.Core.Chat;
 
@@ -25,6 +26,8 @@ public sealed record ChatMessage
 	public required long CreatedAt { get; init; }
 	public required MessageStatus Status { get; init; }
 	public string? ReplyToId { get; init; }
+	/// <summary>Photo, video, audio or file, when this is a file message (Text is then a short label).</summary>
+	public Attachment? Attachment { get; init; }
 	/// <summary>How many relays accepted the message, for the delivery indicator.</summary>
 	public int RelaysAccepted { get; init; }
 	public bool IsOutgoing => Status != MessageStatus.Received;
@@ -42,6 +45,8 @@ public sealed record Contact
 	/// <summary>Unknown sender who wrote first; shown as a message request.</summary>
 	public bool IsRequest { get; init; }
 	public long LastReadAt { get; init; }
+	/// <summary>Messages from blocked contacts are dropped without being stored or shown.</summary>
+	public bool IsBlocked { get; init; }
 	public string Npub => Nip19.EncodeNpub(PubKey);
 	public string DisplayName => string.IsNullOrWhiteSpace(Name) ? ShortNpub(PubKey) : Name!;
 
@@ -59,4 +64,6 @@ public sealed record ChatSettings
 	public IReadOnlyList<string> Relays { get; init; } = DefaultRelays.All;
 	/// <summary>SOCKS5/HTTP proxy for all traffic, e.g. socks5://127.0.0.1:9050 for Tor. Null for direct.</summary>
 	public string? ProxyUrl { get; init; }
+	/// <summary>Blossom servers that store encrypted attachments.</summary>
+	public IReadOnlyList<string> MediaServers { get; init; } = DefaultRelays.MediaServers;
 }

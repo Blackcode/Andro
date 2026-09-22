@@ -87,6 +87,7 @@ public sealed class ChatStore
 		{
 			var lastByPeer = _data.Messages.GroupBy(m => m.PeerPubKey).ToDictionary(g => g.Key, g => g.MaxBy(m => m.CreatedAt));
 			return [.. _data.Contacts.Values
+				.Where(c => !c.IsBlocked)
 				.Select(c => new Conversation(
 					c,
 					lastByPeer.GetValueOrDefault(c.PubKey),
@@ -94,6 +95,26 @@ public sealed class ChatStore
 				.OrderByDescending(c => c.LastMessage?.CreatedAt ?? 0)
 				.ThenBy(c => c.Contact.DisplayName, StringComparer.CurrentCultureIgnoreCase)];
 		}
+	}
+
+	public IReadOnlyList<Contact> BlockedContacts()
+	{
+		lock (_gate)
+			return [.. _data.Contacts.Values.Where(c => c.IsBlocked).OrderBy(c => c.DisplayName, StringComparer.CurrentCultureIgnoreCase)];
+	}
+
+	/// <summary>Swaps a message for a new version with a different id (e.g. once an upload completes).</summary>
+	public void ReplaceMessage(string oldId, ChatMessage message)
+	{
+		lock (_gate)
+		{
+			var index = _data.Messages.FindIndex(m => m.Id == oldId);
+			if (index >= 0)
+				_data.Messages[index] = message;
+			else if (!_data.Messages.Exists(m => m.Id == message.Id))
+				_data.Messages.Add(message);
+		}
+		ScheduleSave();
 	}
 
 	public IReadOnlyList<ChatMessage> Messages(string peerPubKey)

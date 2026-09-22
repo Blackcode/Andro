@@ -14,6 +14,16 @@ public static class PrivateMessages
 		return NostrEvent.CreateUnsigned(senderPubKey, Kinds.ChatMessage, text, tags, createdAt);
 	}
 
+	/// <summary>Builds the unsigned kind-15 file message: the content is the file's URL, the tags say how to decrypt it.</summary>
+	public static NostrEvent CreateFileMessage(string senderPubKey, IReadOnlyCollection<string> recipientPubKeys, Media.Attachment attachment, long? createdAt = null)
+	{
+		var tags = new List<IReadOnlyList<string>>();
+		foreach (var recipient in recipientPubKeys)
+			tags.Add(["p", recipient]);
+		tags.AddRange(attachment.ToTags());
+		return NostrEvent.CreateUnsigned(senderPubKey, Kinds.FileMessage, attachment.Url, tags, createdAt);
+	}
+
 	/// <summary>Kind 10050: the relays where this user wants to receive private messages.</summary>
 	public static NostrEvent CreateInboxRelayList(Crypto.NostrKeys keys, IEnumerable<string> relayUrls) =>
 		NostrEvent.CreateSigned(keys, Kinds.DmRelayList, "", [.. relayUrls.Select(url => (IReadOnlyList<string>)["relay", url])]);
