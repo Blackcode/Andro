@@ -19,6 +19,19 @@ public partial class ChatPage : ContentPage
 		_viewModel.OnAppearing();
 	}
 
+	/// <summary>Like WhatsApp: when the keyboard opens, keep the newest message in view above it.</summary>
+	void OnComposerFocused(object? sender, FocusEventArgs e)
+	{
+		// Wait for the keyboard animation and the resulting re-layout before scrolling.
+		Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(300), ScrollToNewest);
+	}
+
+	void ScrollToNewest()
+	{
+		if (_viewModel.Rows.Count > 0)
+			MessageList.ScrollTo(_viewModel.Rows[^1], position: ScrollToPosition.End, animate: true);
+	}
+
 	protected override void OnDisappearing()
 	{
 		base.OnDisappearing();
