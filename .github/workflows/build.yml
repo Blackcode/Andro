@@ -37,10 +37,17 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
           SIGNING=""
           if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            echo "$KEYSTORE_BASE64" | tr -d ' \r\n' | base64 -d > "$RUNNER_TEMP/release.keystore"
+            # Fail fast with a readable reason (apksigner only says "exited with code 2").
+            if ! keytool -list -keystore "$RUNNER_TEMP/release.keystore" -storepass:env ANDROID_KEYSTORE_PASSWORD -alias "$ANDROID_KEY_ALIAS" > "$RUNNER_TEMP/keytool.log" 2>&1; then
+              sed 's/^/  keytool: /' "$RUNNER_TEMP/keytool.log"
+              echo "::error::The release key secrets don't match: check ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS (should be 'uncage') and that ANDROID_KEYSTORE_BASE64 was pasted completely. keytool said: $(grep -m1 -i 'error' "$RUNNER_TEMP/keytool.log")"
+              exit 1
+            fi
             SIGNING="-p:AndroidKeyStore=true -p:AndroidSigningKeyStore=$RUNNER_TEMP/release.keystore -p:AndroidSigningKeyAlias=${{ secrets.ANDROID_KEY_ALIAS }} -p:AndroidSigningStorePass=env:ANDROID_KEYSTORE_PASSWORD -p:AndroidSigningKeyPass=env:ANDROID_KEYSTORE_PASSWORD"
           else
             echo "::warning::No release key configured; this APK is signed with a throwaway debug key and can't update an installed copy."
