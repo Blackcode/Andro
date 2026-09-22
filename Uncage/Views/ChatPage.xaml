@@ -136,7 +136,8 @@
                 </Border>
             </CollectionView.Header>
             <CollectionView.Footer>
-                <BoxView HeightRequest="6" Color="Transparent" />
+                <!-- Breathing room under the last bubble (a ContentView: BoxViews get a visible color from the global style). -->
+                <ContentView HeightRequest="6" />
             </CollectionView.Footer>
         </CollectionView>
 

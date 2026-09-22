@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="colorPrimary">#1DAA61</color>
-    <color name="colorPrimaryDark">#1DAA61</color>
+    <!-- Status bar: blends with the white header in light mode (dark icons are set in MainActivity). -->
+    <color name="colorPrimaryDark">#FFFFFF</color>
     <color name="colorAccent">#1DAA61</color>
 </resources>
