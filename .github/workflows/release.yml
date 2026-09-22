@@ -1,11 +1,16 @@
 name: Release
 
-# Push a version tag to publish a signed APK as a GitHub Release:
+# Publish a signed APK as a GitHub Release, either by pushing a version tag:
 #   git tag v1.0.0 && git push origin v1.0.0
-# (or draft a release on GitHub with a new v1.2.3 tag).
+# or from GitHub: Actions > Release > Run workflow, entering the version (creates the tag).
 on:
   push:
     tags: ['v[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, e.g. 1.0.0 (tag v1.0.0 is created from the selected branch)'
+        required: true
 
 permissions:
   contents: write
@@ -14,7 +19,15 @@ jobs:
   android:
     name: Signed Android release
     runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref_name }}
     steps:
+      - name: Check version
+        run: |
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version must look like 1.2.3 (got '${TAG#v}')."
+            exit 1
+          fi
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
@@ -40,7 +53,7 @@ jobs:
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${TAG#v}"
           # Android only installs an update with a higher version code: derive it from the tag
           # (v1.2.3 -> 1002003) so it always increases and stays above regular CI builds.
           IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION"
@@ -62,16 +75,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${TAG#v}"
           NOTES="Uncage $VERSION for Android.
 
           Install: download Uncage-$VERSION.apk on your phone and open it (allow installing from this source when asked).
           Every release is signed with the same key, so it installs as an update and keeps your chats.
 
           SHA-256: $(cut -d' ' -f1 "Uncage-$VERSION.apk.sha256")"
-          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" "Uncage-$VERSION.apk" "Uncage-$VERSION.apk.sha256" --clobber
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "Uncage-$VERSION.apk" "Uncage-$VERSION.apk.sha256" --clobber
           else
-            gh release create "$GITHUB_REF_NAME" "Uncage-$VERSION.apk" "Uncage-$VERSION.apk.sha256" \
-              --title "Uncage $VERSION" --notes "$NOTES"
+            # --target creates the tag on this exact commit when it doesn't exist yet (manual runs).
+            gh release create "$TAG" "Uncage-$VERSION.apk" "Uncage-$VERSION.apk.sha256" \
+              --target "$GITHUB_SHA" --title "Uncage $VERSION" --notes "$NOTES"
           fi
