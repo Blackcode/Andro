@@ -40,7 +40,11 @@ public sealed class BlossomClient : IDisposable
 	public sealed record UploadResult(IReadOnlyList<string> Urls, IReadOnlyList<string> Errors);
 
 	/// <summary>Uploads to every server in parallel and returns the URLs that accepted it.</summary>
-	public async Task<UploadResult> UploadAsync(byte[] blob, IEnumerable<string> servers, CancellationToken cancellationToken = default)
+	/// <param name="mimeType">
+	/// The original file's type. Many public media servers refuse "application/octet-stream"; if one does,
+	/// the (still encrypted) upload is retried labelled with this type.
+	/// </param>
+	public async Task<UploadResult> UploadAsync(byte[] blob, IEnumerable<string> servers, string? mimeType = null, CancellationToken cancellationToken = default)
 	{
 		var sha256 = MediaCrypto.Sha256Hex(blob);
 		var uploads = servers.Select(s => s.TrimEnd('/')).Distinct().Select(async server =>
@@ -48,7 +52,9 @@ public sealed class BlossomClient : IDisposable
 			var host = Uri.TryCreate(server, UriKind.Absolute, out var uri) ? uri.Host : server;
 			try
 			{
-				var (url, error) = await UploadOneAsync(server, blob, sha256, cancellationToken);
+				var (url, error, status) = await UploadOneAsync(server, blob, sha256, "application/octet-stream", cancellationToken);
+				if (url is null && status is 400 or 415 && mimeType is { Length: > 0 } && mimeType != "application/octet-stream")
+					(url, error, _) = await UploadOneAsync(server, blob, sha256, mimeType, cancellationToken);
 				return (Url: url, Error: error is null ? null : $"{host}: {error}");
 			}
 			catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException or InvalidDataException && !cancellationToken.IsCancellationRequested)
@@ -63,7 +69,7 @@ public sealed class BlossomClient : IDisposable
 		return new UploadResult([.. results.Select(r => r.Url).OfType<string>()], [.. results.Select(r => r.Error).OfType<string>()]);
 	}
 
-	async Task<(string? Url, string? Error)> UploadOneAsync(string server, byte[] blob, string sha256, CancellationToken cancellationToken)
+	async Task<(string? Url, string? Error, int? Status)> UploadOneAsync(string server, byte[] blob, string sha256, string contentType, CancellationToken cancellationToken)
 	{
 		var now = DateTimeOffset.UtcNow;
 		var auth = NostrEvent.CreateSigned(NostrKeys.Generate(), KindBlossomAuth, "Upload encrypted attachment",
@@ -79,25 +85,25 @@ public sealed class BlossomClient : IDisposable
 		request.Headers.Authorization = new AuthenticationHeaderValue("Nostr", Convert.ToBase64String(Encoding.UTF8.GetBytes(auth.ToJson())));
 		request.Headers.Add("X-SHA-256", sha256);
 		request.Content = new ByteArrayContent(blob);
-		request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+		request.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
 
 		using var response = await _http.SendAsync(request, cancellationToken);
 		if (!response.IsSuccessStatusCode)
 		{
 			// BUD-01: servers explain refusals in the X-Reason header.
 			var reason = response.Headers.TryGetValues("X-Reason", out var values) ? string.Join(" ", values) : response.ReasonPhrase;
-			return (null, $"{(int)response.StatusCode} {reason}".Trim());
+			return (null, $"{(int)response.StatusCode} {reason}".Trim(), (int)response.StatusCode);
 		}
 
 		using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
 		var root = json.RootElement;
 		// The descriptor must describe exactly what we sent.
 		if (root.TryGetProperty("sha256", out var reported) && !string.Equals(reported.GetString(), sha256, StringComparison.OrdinalIgnoreCase))
-			return (null, "stored a different file");
+			return (null, "changed the file (servers that re-encode media can't store encrypted files)", null);
 		var url = root.TryGetProperty("url", out var u) && Uri.TryCreate(u.GetString(), UriKind.Absolute, out var parsed)
 			? parsed.ToString()
 			: $"{server}/{sha256}";
-		return (url, null);
+		return (url, null, null);
 	}
 
 	/// <summary>

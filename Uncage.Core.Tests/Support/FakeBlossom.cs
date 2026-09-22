@@ -26,6 +26,8 @@ sealed class FakeBlossom : IDisposable
 	public ConcurrentBag<string> Uploaders { get; } = [];
 	/// <summary>Serve these bytes instead of the real blob (a malicious or broken server).</summary>
 	public byte[]? Tamper { get; set; }
+	/// <summary>Like many public media hosts: refuse uploads not labelled as image/video/audio.</summary>
+	public bool MediaTypesOnly { get; set; }
 
 	async Task Loop()
 	{
@@ -53,6 +55,13 @@ sealed class FakeBlossom : IDisposable
 			if (auth is null || !auth.IsValid() || auth.Kind != 24242 || auth.FirstTagValue("t") != "upload" || auth.FirstTagValue("x") != sha)
 			{
 				ctx.Response.StatusCode = 401;
+				return;
+			}
+			var type = ctx.Request.ContentType ?? "";
+			if (MediaTypesOnly && !(type.StartsWith("image/") || type.StartsWith("video/") || type.StartsWith("audio/")))
+			{
+				ctx.Response.StatusCode = 415;
+				ctx.Response.Headers["X-Reason"] = "Unsupported Media Type";
 				return;
 			}
 			Uploaders.Add(auth.PubKey);

@@ -122,6 +122,24 @@ public class MediaTests
 	}
 
 	[Fact]
+	public async Task UploadsToMediaOnlyServersWithTheFileType()
+	{
+		await using var relay = new TestRelay();
+		using var picky = new FakeBlossom { MediaTypesOnly = true };
+		var bobKeys = NostrKeys.Generate();
+		await using var alice = CreateUser(NostrKeys.Generate(), relay.Url, picky.Url);
+		await using var bob = CreateUser(bobKeys, relay.Url, picky.Url);
+		await alice.StartAsync();
+		await bob.StartAsync();
+
+		var photo = RandomNumberGenerator.GetBytes(10_000);
+		var bobGets = Next(bob);
+		var sent = await alice.SendFileAsync(bobKeys.PublicKeyHex, photo, "image/jpeg");
+		Assert.Equal(MessageStatus.Sent, sent.Status);
+		Assert.Equal(photo, await bob.GetAttachmentAsync((await bobGets).Attachment!));
+	}
+
+	[Fact]
 	public async Task FailedUploadsCanBeRetried()
 	{
 		await using var relay = new TestRelay();
