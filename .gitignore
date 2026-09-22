@@ -1,10 +1,22 @@
-.gradle/
-build/
-local.properties
-*.iml
-.idea/
-.kotlin/
-captures/
+# Build outputs
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
 *.apk
 *.aab
+*.ipa
+*.msix
+AppPackages/
+
+# IDE / user-specific files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userprefs
+
+# OS-generated files
 .DS_Store
+Thumbs.db
