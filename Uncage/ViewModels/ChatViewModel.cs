@@ -371,20 +371,33 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 			return;
 		}
 		_player = AudioManager.Current.CreatePlayer(new MemoryStream(bytes));
-		_player.PlaybackEnded += (_, _) => Ui.OnMainThread(StopPlayback);
+		_player.PlaybackEnded += OnPlaybackEnded;
 		_playing = item;
 		item.IsPlaying = true;
 		_player.Play();
 	}
 
+	void OnPlaybackEnded(object? sender, EventArgs e) => Ui.OnMainThread(() =>
+	{
+		// Ignore events from a player that was already stopped or replaced.
+		if (sender is not null && ReferenceEquals(sender, _player))
+			StopPlayback();
+	});
+
 	void StopPlayback()
 	{
+		// Detach and clear first: on some platforms Stop() raises PlaybackEnded synchronously,
+		// which used to call back into here and recurse until the stack overflowed.
+		var player = _player;
+		_player = null;
 		if (_playing is not null)
 			_playing.IsPlaying = false;
 		_playing = null;
-		_player?.Stop();
-		_player?.Dispose();
-		_player = null;
+		if (player is null)
+			return;
+		player.PlaybackEnded -= OnPlaybackEnded;
+		player.Stop();
+		player.Dispose();
 	}
 
 	async Task ShareFileAsync(MessageItem item)
