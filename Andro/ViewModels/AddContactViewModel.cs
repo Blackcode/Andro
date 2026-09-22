@@ -5,8 +5,18 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Andro.ViewModels;
 
-public partial class AddContactViewModel(ChatSession session) : ObservableObject
+public partial class AddContactViewModel(ChatSession session) : ObservableObject, IQueryAttributable
 {
+	/// <summary>Receives the ID found by the QR scanner.</summary>
+	public void ApplyQueryAttributes(IDictionary<string, object> query)
+	{
+		if (query.TryGetValue("pubkey", out var value) && value is string pubKey && Nip19.TryParsePublicKey(pubKey) is { } hex)
+			PublicKey = Nip19.EncodeNpub(hex);
+	}
+
+	[RelayCommand]
+	static Task ScanAsync() => Shell.Current.GoToAsync("scan");
+
 	[ObservableProperty]
 	public partial string PublicKey { get; set; } = "";
 

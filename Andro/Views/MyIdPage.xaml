@@ -8,7 +8,7 @@
     <ScrollView>
         <VerticalStackLayout Padding="24" Spacing="16" MaximumWidthRequest="520">
             <Label Style="{StaticResource Caption}" FontSize="14" HorizontalTextAlignment="Center"
-                   Text="People need this ID to message you. It is public: it doesn't reveal your name, number or location." />
+                   Text="Let your contact scan this code with New chat → Scan, or share the ID below. It is public: it doesn't reveal your name, number or location." />
             <Border BackgroundColor="White" Padding="12" StrokeThickness="0" StrokeShape="RoundRectangle 12" HorizontalOptions="Center">
                 <Image Source="{Binding QrCode}" WidthRequest="260" HeightRequest="260" SemanticProperties.Description="QR code of your ID" />
             </Border>

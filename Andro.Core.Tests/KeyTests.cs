@@ -19,6 +19,14 @@ public class KeyTests
 	}
 
 	[Fact]
+	public void AcceptsNprofileFromOtherApps()
+	{
+		// Example from NIP-19.
+		Assert.Equal("3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d", Nip19.TryParsePublicKey(
+			"nostr:nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p"));
+	}
+
+	[Fact]
 	public void NsecRoundTrips()
 	{
 		const string nsec = "nsec1vl029mgpspedva04g90vltkh6fvh240zqtv9k0t9af8935ke9laqsnlfe5";

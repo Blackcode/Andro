@@ -21,7 +21,7 @@ Andro uses the open Nostr protocol (NIP-01/17/19/42/44/59). It can exchange priv
 - **No forward secrecy.** If your secret key is stolen, past messages stored on relays can be decrypted. Keep the backup key offline.
 - **Relays can refuse to store messages.** That's why several are used; add relays you trust.
 - **One-to-one chats only**, text only for now.
-- Check a contact's ID in person or over a channel you trust. Anyone can create an identity with any name.
+- Anyone can create an identity with any name, so check a contact's ID in person. **New chat → Scan their QR code** reads the code on their **My ID** screen, which also accepts `npub`/`nprofile` QR codes from other Nostr apps. Scanning happens entirely on the phone.
 
 ## Solution layout
 

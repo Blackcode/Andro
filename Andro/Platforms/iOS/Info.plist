@@ -45,5 +45,7 @@
 	</dict>
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Andro uses the camera only to scan a contact's QR code. Nothing is recorded or sent.</string>
 </dict>
 </plist>

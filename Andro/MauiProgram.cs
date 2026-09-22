@@ -2,6 +2,7 @@ using Andro.Services;
 using Andro.ViewModels;
 using Andro.Views;
 using Microsoft.Extensions.Logging;
+using ZXing.Net.Maui.Controls;
 
 namespace Andro;
 
@@ -12,6 +13,7 @@ public static class MauiProgram
 		var builder = MauiApp.CreateBuilder();
 		builder
 			.UseMauiApp<App>()
+			.UseBarcodeReader()
 			.ConfigureFonts(fonts =>
 			{
 				fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -30,6 +32,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<ChatViewModel>();
 		builder.Services.AddTransient<AddContactPage>();
 		builder.Services.AddTransient<AddContactViewModel>();
+		builder.Services.AddTransient<ScanPage>();
 		builder.Services.AddTransient<MyIdPage>();
 		builder.Services.AddTransient<MyIdViewModel>();
 		builder.Services.AddTransient<SettingsPage>();

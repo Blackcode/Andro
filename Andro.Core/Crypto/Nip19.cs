@@ -11,7 +11,10 @@ public static class Nip19
 
 	public static byte[] DecodeNsec(string nsec) => DecodeKey(nsec, "nsec");
 
-	/// <summary>Accepts npub1… or 64 hex characters and returns the hex public key, or null if invalid.</summary>
+	/// <summary>
+	/// Accepts npub1…, nprofile1… (what some other Nostr apps put in QR codes), an optional
+	/// "nostr:" prefix, or 64 hex characters. Returns the hex public key, or null if invalid.
+	/// </summary>
 	public static string? TryParsePublicKey(string? input)
 	{
 		if (string.IsNullOrWhiteSpace(input))
@@ -21,13 +24,33 @@ public static class Nip19
 			input = input[6..];
 		try
 		{
-			var hex = input.StartsWith("npub1", StringComparison.OrdinalIgnoreCase) ? DecodeNpub(input) : input.ToLowerInvariant();
+			var hex = input.StartsWith("npub1", StringComparison.OrdinalIgnoreCase) ? DecodeNpub(input)
+				: input.StartsWith("nprofile1", StringComparison.OrdinalIgnoreCase) ? DecodeNprofile(input)
+				: input.ToLowerInvariant();
 			return NostrKeys.IsValidPublicKey(hex) ? hex : null;
 		}
 		catch (FormatException)
 		{
 			return null;
 		}
+	}
+
+	/// <summary>nprofile is TLV-encoded; type 0 holds the 32-byte public key (relay hints are ignored).</summary>
+	static string DecodeNprofile(string nprofile)
+	{
+		var (hrp, data) = Bech32.Decode(nprofile);
+		if (hrp != "nprofile")
+			throw new FormatException("Expected an nprofile.");
+		for (var i = 0; i + 2 <= data.Length;)
+		{
+			int type = data[i], length = data[i + 1];
+			if (i + 2 + length > data.Length)
+				break;
+			if (type == 0 && length == 32)
+				return Hex.Encode(data.AsSpan(i + 2, 32));
+			i += 2 + length;
+		}
+		throw new FormatException("nprofile has no public key.");
 	}
 
 	static byte[] DecodeKey(string value, string expectedHrp)
