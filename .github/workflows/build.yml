@@ -14,9 +14,9 @@ jobs:
         with:
           dotnet-version: 10.0.x
       - name: Test
-        run: dotnet test Andro.Core.Tests/Andro.Core.Tests.csproj -c Release
+        run: dotnet test Uncage.Core.Tests/Uncage.Core.Tests.csproj -c Release
       - name: Compile app XAML and C# (no platform SDK)
-        run: dotnet build Andro/Andro.csproj -c Release -p:AndroVerifyBuild=true
+        run: dotnet build Uncage/Uncage.csproj -c Release -p:UncageVerifyBuild=true
 
   android:
     name: Android app
@@ -33,11 +33,11 @@ jobs:
       - name: Install MAUI Android workload
         run: dotnet workload install maui-android
       - name: Build APK
-        run: dotnet publish Andro/Andro.csproj -f net10.0-android -c Release -p:AndroidPackageFormat=apk
+        run: dotnet publish Uncage/Uncage.csproj -f net10.0-android -c Release -p:AndroidPackageFormat=apk
       - uses: actions/upload-artifact@v4
         with:
-          name: andro-android
-          path: Andro/bin/Release/net10.0-android/publish/*-Signed.apk
+          name: uncage-android
+          path: Uncage/bin/Release/net10.0-android/publish/*-Signed.apk
 
   windows:
     name: Windows app
@@ -50,4 +50,4 @@ jobs:
       - name: Install MAUI workload
         run: dotnet workload install maui-windows
       - name: Build Windows
-        run: dotnet build Andro/Andro.csproj -f net10.0-windows10.0.19041.0 -c Release
+        run: dotnet build Uncage/Uncage.csproj -f net10.0-windows10.0.19041.0 -c Release

@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Uncage.ViewModels"
+             xmlns:views="clr-namespace:Uncage.Views"
+             x:Class="Uncage.Views.SettingsPage"
+             x:DataType="vm:SettingsViewModel">
+
+    <Shell.TitleView>
+        <Label Text="Settings" Style="{StaticResource AppTitle}" Margin="4,0" />
+    </Shell.TitleView>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="0,4,0,32" MaximumWidthRequest="720">
+
+            <!-- Privacy: Tor -->
+            <Label Text="Privacy" Style="{StaticResource SectionTitle}" />
+            <Grid ColumnDefinitions="64,*,Auto" Padding="0,8,16,8">
+                <Label Text="{x:Static views:Icons.Tor}" Style="{StaticResource Icon}" />
+                <VerticalStackLayout Grid.Column="1" Spacing="2">
+                    <Label Text="Route through Tor" Style="{StaticResource RowTitle}" />
+                    <Label Style="{StaticResource Caption}" Text="Hides which relays you use from your internet provider and reaches .onion relays. Start Orbot (Android) or Tor first." />
+                </VerticalStackLayout>
+                <Switch Grid.Column="2" IsToggled="{Binding UseProxy}" VerticalOptions="Center"
+                        OnColor="{AppThemeBinding Light={StaticResource ChipOnLight}, Dark={StaticResource ChipOnDark}}"
+                        ThumbColor="{AppThemeBinding Light={StaticResource Green}, Dark={StaticResource GreenDark}}" />
+            </Grid>
+            <Grid ColumnDefinitions="64,*,Auto" ColumnSpacing="8" Padding="0,0,16,8" IsVisible="{Binding UseProxy}">
+                <Border Grid.Column="1" Style="{StaticResource FieldBox}">
+                    <Entry Text="{Binding ProxyUrl}" Placeholder="socks5://127.0.0.1:9050" Style="{StaticResource PlainEntry}" />
+                </Border>
+                <Button Grid.Column="2" Text="Apply" Style="{StaticResource TextButton}" Command="{Binding ApplyProxyCommand}" />
+            </Grid>
+            <BoxView Style="{StaticResource Divider}" Margin="64,4,0,0" />
+
+            <!-- Relays -->
+            <Label Text="Relays" Style="{StaticResource SectionTitle}" />
+            <Grid ColumnDefinitions="64,*" Padding="0,0,16,6">
+                <Label Text="{x:Static views:Icons.Relays}" Style="{StaticResource Icon}" VerticalOptions="Start" />
+                <Label Grid.Column="1" Style="{StaticResource Caption}"
+                       Text="Independent servers that store and forward your encrypted messages. The more you use, the harder you are to block. If some are blocked where you live, add others from people you trust." />
+            </Grid>
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Relays}">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RelayItem">
+                        <Grid ColumnDefinitions="64,*,Auto" Padding="0,6,8,6">
+                            <Ellipse WidthRequest="10" HeightRequest="10" HorizontalOptions="Center" VerticalOptions="Center" Fill="{StaticResource Danger}">
+                                <Ellipse.Triggers>
+                                    <DataTrigger TargetType="Ellipse" Binding="{Binding IsConnected}" Value="True">
+                                        <Setter Property="Fill" Value="{StaticResource Success}" />
+                                    </DataTrigger>
+                                </Ellipse.Triggers>
+                            </Ellipse>
+                            <VerticalStackLayout Grid.Column="1">
+                                <Label Text="{Binding Url}" Style="{StaticResource RowTitle}" FontSize="15" LineBreakMode="MiddleTruncation" />
+                                <Label Text="{Binding Status}" Style="{StaticResource Caption}" FontSize="12" LineBreakMode="TailTruncation" />
+                            </VerticalStackLayout>
+                            <ImageButton Grid.Column="2" WidthRequest="44" HeightRequest="44" Padding="10" BackgroundColor="Transparent"
+                                         SemanticProperties.Description="Remove relay"
+                                         Command="{Binding RemoveRelayCommand, Source={RelativeSource AncestorType={x:Type vm:SettingsViewModel}}, x:DataType=vm:SettingsViewModel}" CommandParameter="{Binding .}">
+                                <ImageButton.Source>
+                                    <FontImageSource FontFamily="MaterialIcons" Glyph="{x:Static views:Icons.Delete}"
+                                                     Color="{AppThemeBinding Light={StaticResource SubTextLight}, Dark={StaticResource SubTextDark}}" />
+                                </ImageButton.Source>
+                            </ImageButton>
+                        </Grid>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+            <Grid ColumnDefinitions="64,*,Auto" ColumnSpacing="8" Padding="0,6,16,0">
+                <Label Text="{x:Static views:Icons.Add}" Style="{StaticResource Icon}" />
+                <Border Grid.Column="1" Style="{StaticResource FieldBox}">
+                    <Entry Text="{Binding NewRelay}" Placeholder="wss://relay.example.com" Keyboard="Url" Style="{StaticResource PlainEntry}" />
+                </Border>
+                <Button Grid.Column="2" Text="Add" Style="{StaticResource TextButton}" Command="{Binding AddRelayCommand}" />
+            </Grid>
+            <Button Text="Restore default relays" Style="{StaticResource TextButton}" HorizontalOptions="Start" Margin="52,4,0,0" Command="{Binding ResetRelaysCommand}" />
+            <BoxView Style="{StaticResource Divider}" Margin="64,4,0,0" />
+
+            <!-- Account: backup key -->
+            <Label Text="Account" Style="{StaticResource SectionTitle}" />
+            <Grid ColumnDefinitions="64,*" Padding="0,8,16,8">
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding RevealSecretCommand}" />
+                </Grid.GestureRecognizers>
+                <Label Text="{x:Static views:Icons.Key}" Style="{StaticResource Icon}" />
+                <VerticalStackLayout Grid.Column="1" Spacing="2">
+                    <Label Text="{Binding IsSecretVisible, Converter={StaticResource SecretButtonText}}" Style="{StaticResource RowTitle}" />
+                    <Label Style="{StaticResource Caption}" Text="Your secret key is the only way to move your identity and messages to a new phone. There's no password reset." />
+                </VerticalStackLayout>
+            </Grid>
+            <VerticalStackLayout IsVisible="{Binding IsSecretVisible}" Spacing="8" Padding="64,0,16,8">
+                <Label Text="{Binding SecretKey}" FontSize="13" LineBreakMode="CharacterWrap" TextColor="{StaticResource Danger}" />
+                <Button Text="Copy secret key" Style="{StaticResource DangerButton}" HorizontalOptions="Start" Command="{Binding CopySecretCommand}" />
+            </VerticalStackLayout>
+
+            <Grid ColumnDefinitions="64,*" Padding="0,10,16,10">
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding DeleteIdentityCommand}" />
+                </Grid.GestureRecognizers>
+                <Label Text="{x:Static views:Icons.Delete}" Style="{StaticResource Icon}" TextColor="{StaticResource Danger}" />
+                <VerticalStackLayout Grid.Column="1" Spacing="2">
+                    <Label Text="Erase identity and chats" Style="{StaticResource RowTitle}" TextColor="{StaticResource Danger}" />
+                    <Label Style="{StaticResource Caption}" Text="Removes everything from this device." />
+                </VerticalStackLayout>
+            </Grid>
+
+            <HorizontalStackLayout HorizontalOptions="Center" Spacing="4" Margin="0,24,0,0">
+                <Label Text="{x:Static views:Icons.Lock}" Style="{StaticResource Icon}" FontSize="13" />
+                <Label Text="No phone number · End-to-end encrypted · Open Nostr protocol" Style="{StaticResource Caption}" FontSize="12" />
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
