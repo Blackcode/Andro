@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?xaml-comp compile="true" ?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <Color x:Key="OutgoingBubbleLight">#DCD3FB</Color>
+    <Color x:Key="OutgoingBubbleDark">#3B2A7A</Color>
+    <Color x:Key="IncomingBubbleLight">#F1F1F4</Color>
+    <Color x:Key="IncomingBubbleDark">#2A2A2E</Color>
+    <Color x:Key="Danger">#C62828</Color>
+    <Color x:Key="Success">#2E7D32</Color>
+
+    <Style x:Key="Caption" TargetType="Label">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Gray500}, Dark={StaticResource Gray300}}" />
+    </Style>
+
+    <Style x:Key="SectionTitle" TargetType="Label">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontFamily" Value="OpenSansSemibold" />
+        <Setter Property="TextTransform" Value="Uppercase" />
+        <Setter Property="Margin" Value="0,16,0,4" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDarkText}}" />
+    </Style>
+
+    <Style x:Key="SecondaryButton" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="Transparent" />
+        <Setter Property="BorderWidth" Value="1" />
+        <Setter Property="BorderColor" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDarkText}}" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDarkText}}" />
+    </Style>
+
+    <Style x:Key="DangerButton" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="Transparent" />
+        <Setter Property="BorderWidth" Value="1" />
+        <Setter Property="BorderColor" Value="{StaticResource Danger}" />
+        <Setter Property="TextColor" Value="{StaticResource Danger}" />
+    </Style>
+
+    <Style x:Key="Avatar" TargetType="Border">
+        <Setter Property="WidthRequest" Value="46" />
+        <Setter Property="HeightRequest" Value="46" />
+        <Setter Property="StrokeThickness" Value="0" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 23" />
+        <Setter Property="BackgroundColor" Value="{StaticResource Primary}" />
+    </Style>
+</ResourceDictionary>

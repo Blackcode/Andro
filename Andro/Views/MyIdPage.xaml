@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Andro.ViewModels"
+             x:Class="Andro.Views.MyIdPage"
+             x:DataType="vm:MyIdViewModel"
+             Title="My ID">
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="16" MaximumWidthRequest="520">
+            <Label Style="{StaticResource Caption}" FontSize="14" HorizontalTextAlignment="Center"
+                   Text="People need this ID to message you. It is public: it doesn't reveal your name, number or location." />
+            <Border BackgroundColor="White" Padding="12" StrokeThickness="0" StrokeShape="RoundRectangle 12" HorizontalOptions="Center">
+                <Image Source="{Binding QrCode}" WidthRequest="260" HeightRequest="260" SemanticProperties.Description="QR code of your ID" />
+            </Border>
+            <Label Text="{Binding Npub}" FontFamily="OpenSansRegular" FontSize="13" HorizontalTextAlignment="Center" LineBreakMode="CharacterWrap" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                <Button Text="Copy" Style="{StaticResource SecondaryButton}" Command="{Binding CopyCommand}" />
+                <Button Grid.Column="1" Text="Share" Command="{Binding ShareCommand}" />
+            </Grid>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

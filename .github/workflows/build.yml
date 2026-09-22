@@ -5,7 +5,21 @@ on:
   pull_request:
 
 jobs:
+  core:
+    name: Core library and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Test
+        run: dotnet test Andro.Core.Tests/Andro.Core.Tests.csproj -c Release
+      - name: Compile app XAML and C# (no platform SDK)
+        run: dotnet build Andro/Andro.csproj -c Release -p:AndroVerifyBuild=true
+
   android:
+    name: Android app
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,10 +32,15 @@ jobs:
           java-version: 17
       - name: Install MAUI Android workload
         run: dotnet workload install maui-android
-      - name: Build Android
-        run: dotnet build Andro/Andro.csproj -f net10.0-android -c Release
+      - name: Build APK
+        run: dotnet publish Andro/Andro.csproj -f net10.0-android -c Release -p:AndroidPackageFormat=apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andro-android
+          path: Andro/bin/Release/net10.0-android/publish/*-Signed.apk
 
   windows:
+    name: Windows app
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4

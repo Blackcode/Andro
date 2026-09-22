@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Andro.ViewModels"
+             x:Class="Andro.Views.ChatsPage"
+             x:DataType="vm:ChatsViewModel"
+             Title="Chats">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="My ID" Command="{Binding MyIdCommand}" />
+        <ToolbarItem Text="Settings" Command="{Binding SettingsCommand}" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="Auto,*">
+        <Label Text="{Binding ConnectionText}" Style="{StaticResource Caption}" Padding="16,6" HorizontalTextAlignment="Center">
+            <Label.Triggers>
+                <DataTrigger TargetType="Label" Binding="{Binding IsOffline}" Value="True">
+                    <Setter Property="TextColor" Value="{StaticResource Danger}" />
+                </DataTrigger>
+            </Label.Triggers>
+        </Label>
+
+        <CollectionView Grid.Row="1" ItemsSource="{Binding Conversations}">
+            <CollectionView.EmptyView>
+                <VerticalStackLayout Padding="32" Spacing="12" VerticalOptions="Center">
+                    <Label Text="No conversations yet" Style="{StaticResource SubHeadline}" />
+                    <Label Style="{StaticResource Caption}" HorizontalTextAlignment="Center"
+                           Text="Share your ID with someone (My ID), or add theirs with the + button. Meet in person or use a channel you trust to swap IDs." />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:ConversationItem">
+                    <Grid Padding="16,10" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" RowDefinitions="Auto,Auto">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding OpenCommand, Source={RelativeSource AncestorType={x:Type vm:ChatsViewModel}}, x:DataType=vm:ChatsViewModel}" CommandParameter="{Binding .}" />
+                        </Grid.GestureRecognizers>
+                        <Border Grid.RowSpan="2" Style="{StaticResource Avatar}">
+                            <Label Text="{Binding Initial}" TextColor="White" FontSize="20" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <HorizontalStackLayout Grid.Column="1" Spacing="6">
+                            <Label Text="{Binding Title}" FontFamily="OpenSansSemibold" FontSize="16" LineBreakMode="TailTruncation" />
+                            <Label Text="new request" IsVisible="{Binding IsRequest}" Style="{StaticResource Caption}" TextColor="{StaticResource Primary}" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <Label Grid.Column="2" Text="{Binding Time}" Style="{StaticResource Caption}" />
+                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding Preview}" Style="{StaticResource Caption}" FontSize="14" MaxLines="1" LineBreakMode="TailTruncation" />
+                        <Border Grid.Row="1" Grid.Column="2" IsVisible="{Binding HasUnread}" BackgroundColor="{StaticResource Primary}" StrokeThickness="0" StrokeShape="RoundRectangle 10" Padding="7,1" HorizontalOptions="End">
+                            <Label Text="{Binding UnreadCount}" TextColor="White" FontSize="12" />
+                        </Border>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Button Grid.Row="1" Text="+" FontSize="28" WidthRequest="60" HeightRequest="60" CornerRadius="30" Padding="0"
+                HorizontalOptions="End" VerticalOptions="End" Margin="20"
+                Command="{Binding NewChatCommand}" SemanticProperties.Description="New chat" />
+    </Grid>
+</ContentPage>

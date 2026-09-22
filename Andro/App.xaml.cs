@@ -1,16 +1,19 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Maui.Controls.PlatformConfiguration;
+using Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific;
 
 namespace Andro;
 
-public partial class App : Application
+public partial class App : Microsoft.Maui.Controls.Application
 {
-	public App()
+	readonly AppShell _shell;
+
+	public App(AppShell shell)
 	{
 		InitializeComponent();
+		_shell = shell;
+		// Keep the message box visible above the keyboard.
+		On<Android>().UseWindowSoftInputModeAdjust(WindowSoftInputModeAdjust.Resize);
 	}
 
-	protected override Window CreateWindow(IActivationState? activationState)
-	{
-		return new Window(new AppShell());
-	}
+	protected override Window CreateWindow(IActivationState? activationState) => new(_shell);
 }

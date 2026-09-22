@@ -3,12 +3,13 @@
     x:Class="Andro.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:local="clr-namespace:Andro"
+    xmlns:views="clr-namespace:Andro.Views"
+    Shell.FlyoutBehavior="Disabled"
+    Shell.NavBarHasShadow="False"
     Title="Andro">
 
-    <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+    <ShellContent Route="loading" ContentTemplate="{DataTemplate views:LoadingPage}" />
+    <ShellContent Route="welcome" ContentTemplate="{DataTemplate views:WelcomePage}" />
+    <ShellContent Route="chats" ContentTemplate="{DataTemplate views:ChatsPage}" />
 
 </Shell>

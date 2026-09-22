@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Andro.ViewModels"
+             x:Class="Andro.Views.SettingsPage"
+             x:DataType="vm:SettingsViewModel"
+             Title="Settings">
+    <ScrollView>
+        <VerticalStackLayout Padding="20,8,20,32" Spacing="8" MaximumWidthRequest="640">
+
+            <Label Text="Censorship protection" Style="{StaticResource SectionTitle}" />
+            <Grid ColumnDefinitions="*,Auto">
+                <VerticalStackLayout>
+                    <Label Text="Route through Tor" FontSize="16" />
+                    <Label Style="{StaticResource Caption}" Text="Hides which relays you use from your internet provider and lets you reach .onion relays. Install and start Orbot (Android) or another Tor app first." />
+                </VerticalStackLayout>
+                <Switch Grid.Column="1" IsToggled="{Binding UseProxy}" VerticalOptions="Center" />
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding UseProxy}">
+                <Entry Text="{Binding ProxyUrl}" Placeholder="socks5://127.0.0.1:9050" IsSpellCheckEnabled="False" IsTextPredictionEnabled="False" />
+                <Button Grid.Column="1" Text="Apply" Style="{StaticResource SecondaryButton}" Command="{Binding ApplyProxyCommand}" />
+            </Grid>
+
+            <Label Text="Relays" Style="{StaticResource SectionTitle}" />
+            <Label Style="{StaticResource Caption}" Text="Your messages are stored and forwarded by these independent servers. The more you use, the harder it is to block you. If some are blocked where you live, add others (ask people you trust for addresses)." />
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Relays}" Spacing="2">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RelayItem">
+                        <Grid ColumnDefinitions="*,Auto" Padding="0,6">
+                            <VerticalStackLayout>
+                                <Label Text="{Binding Url}" FontSize="15" LineBreakMode="MiddleTruncation" />
+                                <Label Text="{Binding Status}" Style="{StaticResource Caption}" LineBreakMode="TailTruncation">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding IsConnected}" Value="True">
+                                            <Setter Property="TextColor" Value="{StaticResource Success}" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                            </VerticalStackLayout>
+                            <Button Grid.Column="1" Text="Remove" Style="{StaticResource SecondaryButton}" Padding="10,2" VerticalOptions="Center"
+                                    Command="{Binding RemoveRelayCommand, Source={RelativeSource AncestorType={x:Type vm:SettingsViewModel}}, x:DataType=vm:SettingsViewModel}" CommandParameter="{Binding .}" />
+                        </Grid>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <Entry Text="{Binding NewRelay}" Placeholder="wss://relay.example.com" Keyboard="Url" IsSpellCheckEnabled="False" IsTextPredictionEnabled="False" />
+                <Button Grid.Column="1" Text="Add" Command="{Binding AddRelayCommand}" />
+            </Grid>
+            <Button Text="Restore default relays" Style="{StaticResource SecondaryButton}" Command="{Binding ResetRelaysCommand}" />
+
+            <Label Text="Backup" Style="{StaticResource SectionTitle}" />
+            <Label Style="{StaticResource Caption}" Text="Your secret key is the only way to restore your identity and messages on a new phone. There is no password reset: if you lose it, it's gone." />
+            <Button Text="{Binding IsSecretVisible, Converter={StaticResource SecretButtonText}}" Style="{StaticResource SecondaryButton}" Command="{Binding RevealSecretCommand}" />
+            <VerticalStackLayout IsVisible="{Binding IsSecretVisible}" Spacing="8">
+                <Label Text="{Binding SecretKey}" FontSize="13" LineBreakMode="CharacterWrap" TextColor="{StaticResource Danger}" />
+                <Button Text="Copy secret key" Style="{StaticResource DangerButton}" Command="{Binding CopySecretCommand}" />
+            </VerticalStackLayout>
+
+            <Label Text="Danger zone" Style="{StaticResource SectionTitle}" TextColor="{StaticResource Danger}" />
+            <Button Text="Erase identity and messages from this phone" Style="{StaticResource DangerButton}" Command="{Binding DeleteIdentityCommand}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

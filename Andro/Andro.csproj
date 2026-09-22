@@ -4,6 +4,8 @@
 		<TargetFrameworks>net10.0-android</TargetFrameworks>
 		<TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
 		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
+		<!-- Compile-only check without any platform SDK: dotnet build -p:AndroVerifyBuild=true -->
+		<TargetFrameworks Condition="'$(AndroVerifyBuild)' == 'true'">net10.0</TargetFrameworks>
 
 		<!-- Note for MacCatalyst:
 		The default runtime is maccatalyst-x64, except in Release config, in which case the default is maccatalyst-x64;maccatalyst-arm64.
@@ -13,8 +15,10 @@
 		<!-- For example: <RuntimeIdentifiers>maccatalyst-x64;maccatalyst-arm64</RuntimeIdentifiers> -->
 
 		<OutputType>Exe</OutputType>
+		<OutputType Condition="'$(TargetFramework)' == 'net10.0'">Library</OutputType>
 		<RootNamespace>Andro</RootNamespace>
-		<UseMaui>true</UseMaui>
+		<UseMaui Condition="'$(AndroVerifyBuild)' != 'true'">true</UseMaui>
+		<MauiVersion Condition="'$(AndroVerifyBuild)' == 'true'">10.0.110</MauiVersion>
 		<SingleProject>true</SingleProject>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
@@ -26,6 +30,8 @@
 		       <MauiXaml Update="MyPage.xaml" Inflator="Default" /> (reverts to defaults: Runtime for Debug, XamlC for Release)
 		       <MauiXaml Update="MyPage.xaml" Inflator="Runtime" /> (force runtime inflation) -->
 		<MauiXamlInflator>SourceGen</MauiXamlInflator>
+		<!-- A binding that doesn't resolve at compile time is a bug. -->
+		<WarningsAsErrors>$(WarningsAsErrors);MAUIG2045</WarningsAsErrors>
 
 		<!-- Display name -->
 		<ApplicationTitle>Andro</ApplicationTitle>
@@ -56,8 +62,6 @@
 
 		<!-- Images -->
 		<MauiImage Include="Resources\Images\*" />
-		<MauiImage Update="Resources\Images\dotnet_bot.png" Resize="True" BaseSize="300,185" />
-		
 		<!-- Custom Fonts -->
 		<MauiFont Include="Resources\Fonts\*" />
 
@@ -68,6 +72,21 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+		<PackageReference Include="QRCoder" Version="1.8.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Andro.Core\Andro.Core.csproj" />
+	</ItemGroup>
+
+	<!-- Compile-only check of all shared C# and XAML on machines without the MAUI workload
+	     (used in the Linux dev container): dotnet build Andro -p:AndroVerifyBuild=true -->
+	<ItemGroup Condition="'$(AndroVerifyBuild)' == 'true'">
+		<Compile Remove="Platforms\**" />
+		<MauiXaml Remove="Platforms\**" />
+		<None Remove="Platforms\**" />
+		<MauiXaml Include="**\*.xaml" Exclude="Platforms\**;bin\**;obj\**" />
 	</ItemGroup>
 
 </Project>

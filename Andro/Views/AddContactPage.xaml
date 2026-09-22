@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Andro.ViewModels"
+             x:Class="Andro.Views.AddContactPage"
+             x:DataType="vm:AddContactViewModel"
+             Title="New chat">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="12" MaximumWidthRequest="560">
+            <Label Text="Their ID" Style="{StaticResource SectionTitle}" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <Entry Placeholder="npub1…" Text="{Binding PublicKey}" IsSpellCheckEnabled="False" IsTextPredictionEnabled="False" />
+                <Button Grid.Column="1" Text="Paste" Style="{StaticResource SecondaryButton}" Command="{Binding PasteCommand}" />
+            </Grid>
+            <Label Style="{StaticResource Caption}" Text="Ask your contact to open My ID and share it with you. Check it in person or over a channel you trust: anyone could claim to be them." />
+
+            <Label Text="Name (optional)" Style="{StaticResource SectionTitle}" />
+            <Entry Placeholder="Only you will see this" Text="{Binding Name}" MaxLength="60" />
+
+            <Button Text="Start chat" Command="{Binding SaveCommand}" Margin="0,12,0,0" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
