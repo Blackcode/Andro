@@ -19,7 +19,7 @@ public partial class WelcomeViewModel(ChatSession session) : ObservableObject
 		try
 		{
 			await session.CreateIdentityAsync();
-			await Shell.Current.GoToAsync("//chats");
+			await Shell.Current.GoToAsync("//main");
 		}
 		catch (Exception e)
 		{
@@ -44,7 +44,7 @@ public partial class WelcomeViewModel(ChatSession session) : ObservableObject
 		{
 			await session.RestoreIdentityAsync(BackupKey);
 			BackupKey = "";
-			await Shell.Current.GoToAsync("//chats");
+			await Shell.Current.GoToAsync("//main");
 		}
 		catch (Exception e) when (e is FormatException or ArgumentException)
 		{

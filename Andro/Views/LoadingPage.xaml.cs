@@ -32,7 +32,7 @@ public partial class LoadingPage : ContentPage
 		try
 		{
 			var hasIdentity = await _session.TryResumeAsync();
-			await Shell.Current.GoToAsync(hasIdentity ? "//chats" : "//welcome");
+			await Shell.Current.GoToAsync(hasIdentity ? "//main" : "//welcome");
 		}
 		catch (Exception e)
 		{

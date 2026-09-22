@@ -5,37 +5,94 @@
              xmlns:views="clr-namespace:Andro.Views"
              x:Class="Andro.Views.ChatPage"
              x:DataType="vm:ChatViewModel"
-             Title="{Binding Title}">
+             Shell.TabBarIsVisible="False"
+             BackgroundColor="{AppThemeBinding Light={StaticResource WallpaperLight}, Dark={StaticResource WallpaperDark}}">
 
-    <ContentPage.ToolbarItems>
-        <ToolbarItem Text="More" Command="{Binding MoreCommand}" />
-    </ContentPage.ToolbarItems>
+    <Shell.TitleView>
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding ContactInfoCommand}" />
+            </Grid.GestureRecognizers>
+            <Border Style="{StaticResource SmallAvatar}" BackgroundColor="{Binding AvatarColor}" VerticalOptions="Center">
+                <Grid>
+                    <Label Text="{Binding Initial}" Style="{StaticResource AvatarInitial}" FontSize="16" IsVisible="{Binding HasName}" />
+                    <Label Text="{x:Static views:Icons.Person}" Style="{StaticResource Icon}" TextColor="White" FontSize="24"
+                           IsVisible="{Binding HasName, Converter={StaticResource InvertedBool}}" />
+                </Grid>
+            </Border>
+            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                <Label Text="{Binding Title}" Style="{StaticResource RowTitle}" FontFamily="OpenSansSemibold" LineBreakMode="TailTruncation" />
+                <Label Text="tap here for contact info" Style="{StaticResource Caption}" FontSize="12" />
+            </VerticalStackLayout>
+            <ImageButton Grid.Column="2" Command="{Binding ContactInfoCommand}" WidthRequest="44" HeightRequest="44" Padding="10"
+                         BackgroundColor="Transparent" SemanticProperties.Description="More options">
+                <ImageButton.Source>
+                    <FontImageSource FontFamily="MaterialIcons" Glyph="{x:Static views:Icons.MoreVert}"
+                                     Color="{AppThemeBinding Light={StaticResource TextLight}, Dark={StaticResource TextDark}}" />
+                </ImageButton.Source>
+            </ImageButton>
+        </Grid>
+    </Shell.TitleView>
 
     <ContentPage.Resources>
+        <DataTemplate x:Key="Date" x:DataType="vm:DateItem">
+            <Border HorizontalOptions="Center" Margin="0,10,0,6" Padding="12,5" StrokeThickness="0" StrokeShape="RoundRectangle 8"
+                    BackgroundColor="{AppThemeBinding Light={StaticResource DateChipLight}, Dark={StaticResource DateChipDark}}">
+                <Label Text="{Binding Text}" Style="{StaticResource Caption}" FontSize="12" />
+            </Border>
+        </DataTemplate>
+
         <DataTemplate x:Key="Incoming" x:DataType="vm:MessageItem">
-            <Grid Padding="12,3,64,3">
-                <Border HorizontalOptions="Start" Padding="12,8" StrokeThickness="0" StrokeShape="RoundRectangle 4,16,16,16"
-                        BackgroundColor="{AppThemeBinding Light={StaticResource IncomingBubbleLight}, Dark={StaticResource IncomingBubbleDark}}">
-                    <VerticalStackLayout Spacing="2">
-                        <Label Text="{Binding Text}" FontSize="15" />
+            <Grid Padding="10,1,64,1">
+                <Grid.Triggers>
+                    <DataTrigger TargetType="Grid" Binding="{Binding StartsGroup}" Value="True">
+                        <Setter Property="Padding" Value="10,6,64,1" />
+                    </DataTrigger>
+                </Grid.Triggers>
+                <Border HorizontalOptions="Start" Padding="9,6,9,5" StrokeThickness="0" StrokeShape="RoundRectangle 8"
+                        BackgroundColor="{AppThemeBinding Light={StaticResource IncomingLight}, Dark={StaticResource IncomingDark}}">
+                    <Border.Triggers>
+                        <DataTrigger TargetType="Border" Binding="{Binding StartsGroup}" Value="True">
+                            <Setter Property="StrokeShape" Value="RoundRectangle 0,8,8,8" />
+                        </DataTrigger>
+                    </Border.Triggers>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding MessageTappedCommand, Source={RelativeSource AncestorType={x:Type vm:ChatViewModel}}, x:DataType=vm:ChatViewModel}" CommandParameter="{Binding .}" />
+                    </Border.GestureRecognizers>
+                    <VerticalStackLayout Spacing="1">
+                        <Label Text="{Binding Text}" Style="{StaticResource RowTitle}" FontSize="15" />
                         <Label Text="{Binding Time}" Style="{StaticResource Caption}" FontSize="11" HorizontalOptions="End" />
                     </VerticalStackLayout>
                 </Border>
             </Grid>
         </DataTemplate>
+
         <DataTemplate x:Key="Outgoing" x:DataType="vm:MessageItem">
-            <Grid Padding="64,3,12,3">
-                <Border HorizontalOptions="End" Padding="12,8" StrokeThickness="0" StrokeShape="RoundRectangle 16,4,16,16"
-                        BackgroundColor="{AppThemeBinding Light={StaticResource OutgoingBubbleLight}, Dark={StaticResource OutgoingBubbleDark}}">
+            <Grid Padding="64,1,10,1">
+                <Grid.Triggers>
+                    <DataTrigger TargetType="Grid" Binding="{Binding StartsGroup}" Value="True">
+                        <Setter Property="Padding" Value="64,6,10,1" />
+                    </DataTrigger>
+                </Grid.Triggers>
+                <Border HorizontalOptions="End" Padding="9,6,9,5" StrokeThickness="0" StrokeShape="RoundRectangle 8"
+                        BackgroundColor="{AppThemeBinding Light={StaticResource OutgoingLight}, Dark={StaticResource OutgoingDark}}">
+                    <Border.Triggers>
+                        <DataTrigger TargetType="Border" Binding="{Binding StartsGroup}" Value="True">
+                            <Setter Property="StrokeShape" Value="RoundRectangle 8,0,8,8" />
+                        </DataTrigger>
+                    </Border.Triggers>
                     <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding RetryCommand, Source={RelativeSource AncestorType={x:Type vm:ChatViewModel}}, x:DataType=vm:ChatViewModel}" CommandParameter="{Binding .}" />
+                        <TapGestureRecognizer Command="{Binding MessageTappedCommand, Source={RelativeSource AncestorType={x:Type vm:ChatViewModel}}, x:DataType=vm:ChatViewModel}" CommandParameter="{Binding .}" />
                     </Border.GestureRecognizers>
-                    <VerticalStackLayout Spacing="2">
-                        <Label Text="{Binding Text}" FontSize="15" />
-                        <HorizontalStackLayout Spacing="6" HorizontalOptions="End">
-                            <Label Text="{Binding Time}" Style="{StaticResource Caption}" FontSize="11" />
-                            <Label Text="{Binding StatusGlyph}" Style="{StaticResource Caption}" FontSize="11">
+                    <VerticalStackLayout Spacing="1">
+                        <Label Text="{Binding Text}" Style="{StaticResource RowTitle}" FontSize="15" />
+                        <HorizontalStackLayout Spacing="3" HorizontalOptions="End">
+                            <Label Text="{Binding Time}" Style="{StaticResource Caption}" FontSize="11" VerticalOptions="Center" />
+                            <Label Text="{Binding StatusGlyph}" Style="{StaticResource Icon}" FontSize="15">
                                 <Label.Triggers>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsWidelyStored}" Value="True">
+                                        <Setter Property="TextColor" Value="#53BDEB" />
+                                    </DataTrigger>
                                     <DataTrigger TargetType="Label" Binding="{Binding IsFailed}" Value="True">
                                         <Setter Property="TextColor" Value="{StaticResource Danger}" />
                                     </DataTrigger>
@@ -46,25 +103,58 @@
                 </Border>
             </Grid>
         </DataTemplate>
-        <views:MessageTemplateSelector x:Key="MessageTemplates" Incoming="{StaticResource Incoming}" Outgoing="{StaticResource Outgoing}" />
+
+        <views:ChatRowTemplateSelector x:Key="RowTemplates" Date="{StaticResource Date}" Incoming="{StaticResource Incoming}" Outgoing="{StaticResource Outgoing}" />
     </ContentPage.Resources>
 
     <Grid RowDefinitions="Auto,*,Auto">
-        <Border IsVisible="{Binding IsRequest}" Padding="16,10" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray900}}">
+        <!-- Message request banner -->
+        <Border IsVisible="{Binding IsRequest}" Padding="16,10" StrokeThickness="0"
+                BackgroundColor="{AppThemeBinding Light={StaticResource PageLight}, Dark={StaticResource IncomingDark}}">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                 <Label Style="{StaticResource Caption}" VerticalOptions="Center"
-                       Text="This person is not in your contacts. Only reply if you know who they are." />
-                <Button Grid.Column="1" Text="Accept" Command="{Binding AcceptRequestCommand}" Padding="14,4" />
+                       Text="This person isn't in your contacts. Only reply if you know who they are." />
+                <Button Grid.Column="1" Text="Accept" Style="{StaticResource PrimaryButton}" HeightRequest="38" Padding="16,0" Command="{Binding AcceptRequestCommand}" />
             </Grid>
         </Border>
 
-        <CollectionView x:Name="MessageList" Grid.Row="1" ItemsSource="{Binding Messages}" ItemTemplate="{StaticResource MessageTemplates}" ItemsUpdatingScrollMode="KeepLastItemInView" />
+        <CollectionView x:Name="MessageList" Grid.Row="1" ItemsSource="{Binding Rows}" ItemTemplate="{StaticResource RowTemplates}"
+                        ItemsUpdatingScrollMode="KeepLastItemInView">
+            <CollectionView.Header>
+                <Border HorizontalOptions="Center" Margin="36,12,36,4" Padding="12,7" StrokeThickness="0" StrokeShape="RoundRectangle 8"
+                        BackgroundColor="{AppThemeBinding Light={StaticResource NoticeLight}, Dark={StaticResource NoticeDark}}">
+                    <Label HorizontalTextAlignment="Center" FontSize="12"
+                           TextColor="{AppThemeBinding Light={StaticResource NoticeTextLight}, Dark={StaticResource NoticeTextDark}}">
+                        <Label.FormattedText>
+                            <FormattedString>
+                                <Span Text="{x:Static views:Icons.Lock}" FontFamily="MaterialIcons" />
+                                <Span Text=" Messages are end-to-end encrypted. No one outside of this chat, not even the relays that carry them, can read them." />
+                            </FormattedString>
+                        </Label.FormattedText>
+                    </Label>
+                </Border>
+            </CollectionView.Header>
+            <CollectionView.Footer>
+                <BoxView HeightRequest="6" Color="Transparent" />
+            </CollectionView.Footer>
+        </CollectionView>
 
-        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="8" Padding="10,6,10,10">
-            <Border Padding="12,0" StrokeShape="RoundRectangle 22" Stroke="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray600}}">
-                <Editor Text="{Binding Draft}" Placeholder="Message" AutoSize="TextChanges" MaximumHeightRequest="140" />
+        <!-- Composer -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="6" Padding="6,4,6,8">
+            <Border Padding="16,0" StrokeThickness="0" StrokeShape="RoundRectangle 24" MinimumHeightRequest="48"
+                    BackgroundColor="{AppThemeBinding Light={StaticResource IncomingLight}, Dark={StaticResource IncomingDark}}">
+                <Editor Text="{Binding Draft}" Placeholder="Message" AutoSize="TextChanges" MaximumHeightRequest="140" FontSize="16"
+                        BackgroundColor="Transparent" VerticalOptions="Center"
+                        PlaceholderColor="{AppThemeBinding Light={StaticResource SubTextLight}, Dark={StaticResource SubTextDark}}" />
             </Border>
-            <Button Grid.Column="1" Text="Send" Command="{Binding SendCommand}" VerticalOptions="End" CornerRadius="22" HeightRequest="44" />
+            <Border Grid.Column="1" WidthRequest="48" HeightRequest="48" StrokeThickness="0" StrokeShape="RoundRectangle 24" VerticalOptions="End"
+                    BackgroundColor="{AppThemeBinding Light={StaticResource Green}, Dark={StaticResource GreenDark}}" SemanticProperties.Description="Send">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding SendCommand}" />
+                </Border.GestureRecognizers>
+                <Label Text="{x:Static views:Icons.Send}" Style="{StaticResource Icon}" FontSize="22" Margin="3,0,0,0"
+                       TextColor="{AppThemeBinding Light=White, Dark={StaticResource PageDark}}" />
+            </Border>
         </Grid>
     </Grid>
 </ContentPage>

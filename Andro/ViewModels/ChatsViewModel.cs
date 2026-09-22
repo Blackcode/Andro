@@ -1,16 +1,32 @@
 using System.Collections.ObjectModel;
 using Andro.Core.Chat;
 using Andro.Services;
+using Andro.Views;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Andro.ViewModels;
 
+public enum ChatFilter
+{
+	All,
+	Unread,
+	Requests,
+}
+
 public partial class ChatsViewModel(ChatSession session) : ObservableObject
 {
 	Messenger? _subscribed;
+	IReadOnlyList<Conversation> _all = [];
 
 	public ObservableCollection<ConversationItem> Conversations { get; } = [];
+
+	[ObservableProperty]
+	public partial string SearchText { get; set; } = "";
+
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(IsAll), nameof(IsUnread), nameof(IsRequests))]
+	public partial ChatFilter Filter { get; set; }
 
 	[ObservableProperty]
 	public partial string ConnectionText { get; set; } = "";
@@ -19,7 +35,11 @@ public partial class ChatsViewModel(ChatSession session) : ObservableObject
 	public partial bool IsOffline { get; set; }
 
 	[ObservableProperty]
-	public partial bool IsEmpty { get; set; }
+	public partial string EmptyText { get; set; } = "";
+
+	public bool IsAll => Filter == ChatFilter.All;
+	public bool IsUnread => Filter == ChatFilter.Unread;
+	public bool IsRequests => Filter == ChatFilter.Requests;
 
 	public void OnAppearing()
 	{
@@ -29,7 +49,12 @@ public partial class ChatsViewModel(ChatSession session) : ObservableObject
 		if (_subscribed != messenger)
 		{
 			if (_subscribed is not null)
-				Unsubscribe(_subscribed);
+			{
+				_subscribed.MessageAdded -= OnMessage;
+				_subscribed.MessageUpdated -= OnMessage;
+				_subscribed.ContactsChanged -= Refresh;
+				_subscribed.ConnectionChanged -= UpdateConnection;
+			}
 			messenger.MessageAdded += OnMessage;
 			messenger.MessageUpdated += OnMessage;
 			messenger.ContactsChanged += Refresh;
@@ -40,13 +65,9 @@ public partial class ChatsViewModel(ChatSession session) : ObservableObject
 		UpdateConnection();
 	}
 
-	void Unsubscribe(Messenger messenger)
-	{
-		messenger.MessageAdded -= OnMessage;
-		messenger.MessageUpdated -= OnMessage;
-		messenger.ContactsChanged -= Refresh;
-		messenger.ConnectionChanged -= UpdateConnection;
-	}
+	partial void OnSearchTextChanged(string value) => ApplyFilter();
+
+	partial void OnFilterChanged(ChatFilter value) => ApplyFilter();
 
 	void OnMessage(ChatMessage _) => Refresh();
 
@@ -54,50 +75,90 @@ public partial class ChatsViewModel(ChatSession session) : ObservableObject
 	{
 		if (session.Messenger is not { } messenger)
 			return;
-		Conversations.Clear();
-		foreach (var conversation in messenger.Store.Conversations())
-			Conversations.Add(new ConversationItem(conversation));
-		IsEmpty = Conversations.Count == 0;
+		_all = messenger.Store.Conversations();
+		ApplyFilter();
 	});
+
+	void ApplyFilter()
+	{
+		var search = SearchText.Trim();
+		var shown = _all.Where(c => Filter switch
+		{
+			ChatFilter.Unread => c.UnreadCount > 0,
+			ChatFilter.Requests => c.Contact.IsRequest,
+			_ => true,
+		}).Where(c => search.Length == 0
+			|| c.Contact.DisplayName.Contains(search, StringComparison.CurrentCultureIgnoreCase)
+			|| (c.LastMessage?.Text.Contains(search, StringComparison.CurrentCultureIgnoreCase) ?? false));
+
+		Conversations.Clear();
+		foreach (var conversation in shown)
+			Conversations.Add(new ConversationItem(conversation));
+
+		EmptyText = _all.Count == 0
+			? "No chats yet.\nTap the green button to start one, or share your ID from the My ID tab."
+			: search.Length > 0 ? $"No chats match \"{search}\"."
+			: Filter == ChatFilter.Unread ? "No unread chats."
+			: Filter == ChatFilter.Requests ? "No message requests." : "";
+	}
 
 	void UpdateConnection() => Ui.OnMainThread(() =>
 	{
 		if (session.Messenger is not { } messenger)
 			return;
 		var connected = messenger.ConnectedRelays;
-		var total = messenger.Relays.Count;
-		var viaTor = !string.IsNullOrEmpty(messenger.Store.Settings.ProxyUrl) ? " via proxy" : "";
+		var viaProxy = !string.IsNullOrEmpty(messenger.Store.Settings.ProxyUrl) ? " via Tor" : "";
 		IsOffline = connected == 0;
-		ConnectionText = connected == 0 ? $"Connecting to {total} relays{viaTor}…" : $"Connected to {connected} of {total} relays{viaTor}";
+		ConnectionText = connected == 0
+			? $"Connecting{viaProxy}…"
+			: $"Connected to {connected} of {messenger.Relays.Count} relays{viaProxy}";
 	});
 
 	[RelayCommand]
-	static Task OpenAsync(ConversationItem item) =>
-		Shell.Current.GoToAsync($"chat?peer={item.PubKey}");
+	void SetFilter(ChatFilter filter) => Filter = filter;
+
+	[RelayCommand]
+	static Task OpenAsync(ConversationItem item) => Shell.Current.GoToAsync($"chat?peer={item.PubKey}");
 
 	[RelayCommand]
 	static Task NewChatAsync() => Shell.Current.GoToAsync("addcontact");
 
 	[RelayCommand]
-	static Task MyIdAsync() => Shell.Current.GoToAsync("myid");
-
-	[RelayCommand]
-	static Task SettingsAsync() => Shell.Current.GoToAsync("settings");
+	static Task ScanAsync() => Shell.Current.GoToAsync("scan?next=addcontact");
 }
 
-public sealed class ConversationItem(Conversation conversation)
+public sealed class ConversationItem
 {
-	public string PubKey { get; } = conversation.Contact.PubKey;
-	public string Title { get; } = conversation.Contact.DisplayName;
-	public string Initial { get; } = conversation.Contact.DisplayName[..1].ToUpperInvariant();
-	public string Preview { get; } = conversation.LastMessage switch
+	public ConversationItem(Conversation conversation)
 	{
-		null => "No messages yet",
-		{ IsOutgoing: true } m => "You: " + m.Text,
-		{ } m => m.Text,
-	};
-	public string Time { get; } = conversation.LastMessage is { } m ? Ui.FormatTime(m.Time) : "";
-	public int UnreadCount { get; } = conversation.UnreadCount;
+		var contact = conversation.Contact;
+		var last = conversation.LastMessage;
+		PubKey = contact.PubKey;
+		Title = contact.DisplayName;
+		Initial = Avatars.InitialFor(contact.Name ?? "");
+		HasName = !string.IsNullOrWhiteSpace(contact.Name);
+		AvatarColor = Avatars.ColorFor(contact.PubKey);
+		Preview = last?.Text.ReplaceLineEndings(" ") ?? (contact.IsRequest ? "Message request" : "Tap to start chatting");
+		Time = last is null ? "" : Ui.FormatTime(last.Time);
+		UnreadCount = conversation.UnreadCount;
+		IsRequest = contact.IsRequest;
+		StatusGlyph = last is { IsOutgoing: true } ? MessageItem.GlyphFor(last) : "";
+		IsFailed = last?.Status == MessageStatus.Failed;
+	}
+
+	public string PubKey { get; }
+	public string Title { get; }
+	public string Initial { get; }
+	/// <summary>Unnamed contacts show a person icon instead of an initial.</summary>
+	public bool HasName { get; }
+	public Color AvatarColor { get; }
+	public string Preview { get; }
+	public string Time { get; }
+	public int UnreadCount { get; }
 	public bool HasUnread => UnreadCount > 0;
-	public bool IsRequest { get; } = conversation.Contact.IsRequest;
+	public string UnreadText => UnreadCount > 99 ? "99+" : UnreadCount.ToString();
+	public bool IsRequest { get; }
+	public string StatusGlyph { get; }
+	public bool HasStatus => StatusGlyph.Length > 0;
+	public bool IsFailed { get; }
 }

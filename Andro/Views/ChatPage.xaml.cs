@@ -10,7 +10,7 @@ public partial class ChatPage : ContentPage
 	{
 		InitializeComponent();
 		BindingContext = _viewModel = viewModel;
-		_viewModel.ScrollRequested += item => MessageList.ScrollTo(item, position: ScrollToPosition.End, animate: false);
+		_viewModel.ScrollRequested += row => MessageList.ScrollTo(row, position: ScrollToPosition.End, animate: false);
 	}
 
 	protected override void OnAppearing()
@@ -26,11 +26,16 @@ public partial class ChatPage : ContentPage
 	}
 }
 
-public sealed class MessageTemplateSelector : DataTemplateSelector
+public sealed class ChatRowTemplateSelector : DataTemplateSelector
 {
+	public DataTemplate? Date { get; set; }
 	public DataTemplate? Incoming { get; set; }
 	public DataTemplate? Outgoing { get; set; }
 
-	protected override DataTemplate OnSelectTemplate(object item, BindableObject container) =>
-		(item is MessageItem { IsOutgoing: true } ? Outgoing : Incoming)!;
+	protected override DataTemplate OnSelectTemplate(object item, BindableObject container) => (item switch
+	{
+		DateItem => Date,
+		MessageItem { IsOutgoing: true } => Outgoing,
+		_ => Incoming,
+	})!;
 }

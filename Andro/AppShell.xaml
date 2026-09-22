@@ -10,6 +10,27 @@
 
     <ShellContent Route="loading" ContentTemplate="{DataTemplate views:LoadingPage}" />
     <ShellContent Route="welcome" ContentTemplate="{DataTemplate views:WelcomePage}" />
-    <ShellContent Route="chats" ContentTemplate="{DataTemplate views:ChatsPage}" />
+
+    <!-- Main screens, with a bottom tab bar like WhatsApp. -->
+    <TabBar Route="main">
+        <Tab Title="Chats">
+            <Tab.Icon>
+                <FontImageSource FontFamily="MaterialIcons" Glyph="{x:Static views:Icons.Chat}" />
+            </Tab.Icon>
+            <ShellContent Route="chats" ContentTemplate="{DataTemplate views:ChatsPage}" />
+        </Tab>
+        <Tab Title="My ID">
+            <Tab.Icon>
+                <FontImageSource FontFamily="MaterialIcons" Glyph="{x:Static views:Icons.QrCode}" />
+            </Tab.Icon>
+            <ShellContent Route="myid" ContentTemplate="{DataTemplate views:MyIdPage}" />
+        </Tab>
+        <Tab Title="Settings">
+            <Tab.Icon>
+                <FontImageSource FontFamily="MaterialIcons" Glyph="{x:Static views:Icons.Settings}" />
+            </Tab.Icon>
+            <ShellContent Route="settings" ContentTemplate="{DataTemplate views:SettingsPage}" />
+        </Tab>
+    </TabBar>
 
 </Shell>

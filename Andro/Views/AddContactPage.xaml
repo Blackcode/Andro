@@ -2,25 +2,51 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:Andro.ViewModels"
+             xmlns:views="clr-namespace:Andro.Views"
              x:Class="Andro.Views.AddContactPage"
              x:DataType="vm:AddContactViewModel"
+             Shell.TabBarIsVisible="False"
              Title="New chat">
     <ScrollView>
-        <VerticalStackLayout Padding="20" Spacing="12" MaximumWidthRequest="560">
-            <Button Text="Scan their QR code" Command="{Binding ScanCommand}" />
-            <Label Style="{StaticResource Caption}" HorizontalTextAlignment="Center" Text="Best done in person: then you know the ID really belongs to them." />
+        <VerticalStackLayout Padding="0,8,0,24" MaximumWidthRequest="560">
 
-            <Label Text="Or paste their ID" Style="{StaticResource SectionTitle}" />
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                <Entry Placeholder="npub1…" Text="{Binding PublicKey}" IsSpellCheckEnabled="False" IsTextPredictionEnabled="False" />
-                <Button Grid.Column="1" Text="Paste" Style="{StaticResource SecondaryButton}" Command="{Binding PasteCommand}" />
+            <!-- Like WhatsApp's "New contact / scan QR" rows -->
+            <Grid ColumnDefinitions="72,*" Padding="0,10,16,10">
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding ScanCommand}" />
+                </Grid.GestureRecognizers>
+                <Border Style="{StaticResource Avatar}" BackgroundColor="{AppThemeBinding Light={StaticResource Green}, Dark={StaticResource GreenDark}}" HorizontalOptions="Center">
+                    <Label Text="{x:Static views:Icons.QrScanner}" Style="{StaticResource Icon}" TextColor="{AppThemeBinding Light=White, Dark={StaticResource PageDark}}" />
+                </Border>
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                    <Label Text="Scan QR code" Style="{StaticResource RowTitle}" FontFamily="OpenSansSemibold" />
+                    <Label Text="Best done in person, so you know the ID is really theirs" Style="{StaticResource Caption}" />
+                </VerticalStackLayout>
             </Grid>
-            <Label Style="{StaticResource Caption}" Text="Ask your contact to open My ID and share it with you. Check it in person or over a channel you trust: anyone could claim to be them." />
 
-            <Label Text="Name (optional)" Style="{StaticResource SectionTitle}" />
-            <Entry Placeholder="Only you will see this" Text="{Binding Name}" MaxLength="60" />
+            <Grid ColumnDefinitions="72,*" Padding="0,10,16,10">
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding PasteCommand}" />
+                </Grid.GestureRecognizers>
+                <Border Style="{StaticResource Avatar}" BackgroundColor="{AppThemeBinding Light={StaticResource Green}, Dark={StaticResource GreenDark}}" HorizontalOptions="Center">
+                    <Label Text="{x:Static views:Icons.Copy}" Style="{StaticResource Icon}" TextColor="{AppThemeBinding Light=White, Dark={StaticResource PageDark}}" />
+                </Border>
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                    <Label Text="Paste an ID" Style="{StaticResource RowTitle}" FontFamily="OpenSansSemibold" />
+                    <Label Text="From a message or email your contact sent you" Style="{StaticResource Caption}" />
+                </VerticalStackLayout>
+            </Grid>
 
-            <Button Text="Start chat" Command="{Binding SaveCommand}" Margin="0,12,0,0" />
+            <Label Text="Contact" Style="{StaticResource SectionTitle}" />
+            <VerticalStackLayout Padding="20,0" Spacing="12">
+                <Border Style="{StaticResource FieldBox}">
+                    <Entry Placeholder="Their ID (npub1…)" Text="{Binding PublicKey}" Style="{StaticResource PlainEntry}" />
+                </Border>
+                <Border Style="{StaticResource FieldBox}">
+                    <Entry Placeholder="Name (only you see it)" Text="{Binding Name}" MaxLength="60" Style="{StaticResource PlainEntry}" IsSpellCheckEnabled="True" />
+                </Border>
+                <Button Text="Start chat" Style="{StaticResource PrimaryButton}" Command="{Binding SaveCommand}" Margin="0,8,0,0" />
+            </VerticalStackLayout>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

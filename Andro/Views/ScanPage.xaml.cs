@@ -8,9 +8,14 @@ namespace Andro.Views;
 /// and returns it to the page that opened the scanner as the "pubkey" query parameter.
 /// Decoding happens on the device; nothing leaves the phone.
 /// </summary>
-public partial class ScanPage : ContentPage
+public partial class ScanPage : ContentPage, IQueryAttributable
 {
 	int _done;
+	/// <summary>"addcontact" when opened from Chats or My ID: continue to New chat with the ID filled in.</summary>
+	string? _next;
+
+	public void ApplyQueryAttributes(IDictionary<string, object> query) =>
+		_next = query.TryGetValue("next", out var next) ? next as string : null;
 
 	public ScanPage()
 	{
@@ -86,7 +91,10 @@ public partial class ScanPage : ContentPage
 			{
 				StopCamera();
 				Vibrate();
-				await Shell.Current.GoToAsync("..", new Dictionary<string, object> { ["pubkey"] = pubKey });
+				if (_next == "addcontact")
+					await Shell.Current.GoToAsync($"../addcontact?pubkey={pubKey}");
+				else
+					await Shell.Current.GoToAsync("..", new Dictionary<string, object> { ["pubkey"] = pubKey });
 			}
 			catch (Exception ex)
 			{

@@ -11,6 +11,6 @@ public sealed class InvertedBoolConverter : IValueConverter
 public sealed class SecretButtonTextConverter : IValueConverter
 {
 	public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-		value is true ? "Hide secret key" : "Show secret key";
+		value is true ? "Hide secret key" : "Back up secret key";
 	public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
 }

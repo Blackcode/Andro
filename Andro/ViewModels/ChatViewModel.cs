@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using Andro.Core.Chat;
 using Andro.Services;
+using Andro.Views;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -8,22 +9,35 @@ namespace Andro.ViewModels;
 
 public partial class ChatViewModel(ChatSession session) : ObservableObject, IQueryAttributable
 {
+	static readonly TimeSpan GroupGap = TimeSpan.FromMinutes(5);
+
 	Messenger? _messenger;
 	string _peer = "";
 
-	public ObservableCollection<MessageItem> Messages { get; } = [];
+	/// <summary>Date separators (<see cref="DateItem"/>) and messages (<see cref="MessageItem"/>), oldest first.</summary>
+	public ObservableCollection<object> Rows { get; } = [];
 
 	[ObservableProperty]
 	public partial string Title { get; set; } = "";
 
 	[ObservableProperty]
+	public partial string Initial { get; set; } = "";
+
+	[ObservableProperty]
+	public partial bool HasName { get; set; }
+
+	[ObservableProperty]
+	public partial Color AvatarColor { get; set; } = Colors.Gray;
+
+	[ObservableProperty]
+	[NotifyCanExecuteChangedFor(nameof(SendCommand))]
 	public partial string Draft { get; set; } = "";
 
 	[ObservableProperty]
 	public partial bool IsRequest { get; set; }
 
-	/// <summary>Raised when the list should scroll to the newest message.</summary>
-	public event Action<MessageItem>? ScrollRequested;
+	/// <summary>Raised when the list should scroll to the newest row.</summary>
+	public event Action<object>? ScrollRequested;
 
 	public void ApplyQueryAttributes(IDictionary<string, object> query)
 	{
@@ -39,16 +53,13 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 		_messenger.MessageAdded += OnMessageAdded;
 		_messenger.MessageUpdated += OnMessageUpdated;
 
-		var contact = _messenger.Store.FindContact(_peer);
-		Title = contact?.DisplayName ?? Core.Chat.Contact.ShortNpub(_peer);
-		IsRequest = contact?.IsRequest ?? false;
-
-		Messages.Clear();
+		UpdateHeader();
+		Rows.Clear();
 		foreach (var message in _messenger.Store.Messages(_peer))
-			Messages.Add(new MessageItem(message));
+			Append(message);
 		_messenger.MarkRead(_peer);
-		if (Messages.Count > 0)
-			ScrollRequested?.Invoke(Messages[^1]);
+		if (Rows.Count > 0)
+			ScrollRequested?.Invoke(Rows[^1]);
 	}
 
 	public void OnDisappearing()
@@ -60,20 +71,54 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 		_messenger.MarkRead(_peer);
 	}
 
+	void UpdateHeader()
+	{
+		var contact = _messenger?.Store.FindContact(_peer);
+		Title = contact?.DisplayName ?? Core.Chat.Contact.ShortNpub(_peer);
+		HasName = !string.IsNullOrWhiteSpace(contact?.Name);
+		Initial = Avatars.InitialFor(contact?.Name ?? "");
+		AvatarColor = Avatars.ColorFor(_peer);
+		IsRequest = contact?.IsRequest ?? false;
+	}
+
+	/// <summary>Adds a message at the end, with a date separator when the day changes.</summary>
+	void Append(ChatMessage message)
+	{
+		var previous = Rows.OfType<MessageItem>().LastOrDefault();
+		var day = message.Time.ToLocalTime().Date;
+		var newDay = previous is null || previous.Model.Time.ToLocalTime().Date != day;
+		if (newDay)
+			Rows.Add(new DateItem(Ui.FormatDay(message.Time)));
+
+		// Like WhatsApp: the first bubble of a run from the same person gets a "tail".
+		var startsGroup = newDay || previous!.IsOutgoing != message.IsOutgoing || message.Time - previous.Model.Time > GroupGap;
+		Rows.Add(new MessageItem(message, startsGroup));
+	}
+
 	void OnMessageAdded(ChatMessage message)
 	{
 		if (message.PeerPubKey != _peer)
 			return;
 		Ui.OnMainThread(() =>
 		{
-			if (Messages.Any(m => m.Id == message.Id))
+			if (Rows.OfType<MessageItem>().Any(m => m.Id == message.Id))
 				return;
-			var item = new MessageItem(message);
-			var index = Messages.Count;
-			while (index > 0 && Messages[index - 1].Model.CreatedAt > message.CreatedAt)
-				index--;
-			Messages.Insert(index, item);
-			ScrollRequested?.Invoke(item);
+			var last = Rows.OfType<MessageItem>().LastOrDefault();
+			if (last is null || last.Model.CreatedAt <= message.CreatedAt)
+			{
+				Append(message);
+			}
+			else
+			{
+				// Arrived out of order (e.g. synced from a relay later): rebuild so dates and groups stay right.
+				var all = Rows.OfType<MessageItem>().Select(m => m.Model).Append(message).OrderBy(m => m.CreatedAt).ToList();
+				Rows.Clear();
+				foreach (var m in all)
+					Append(m);
+			}
+			if (IsRequest)
+				UpdateHeader();
+			ScrollRequested?.Invoke(Rows[^1]);
 		});
 	}
 
@@ -81,10 +126,12 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 	{
 		if (message.PeerPubKey != _peer)
 			return;
-		Ui.OnMainThread(() => Messages.FirstOrDefault(m => m.Id == message.Id)?.Update(message));
+		Ui.OnMainThread(() => Rows.OfType<MessageItem>().FirstOrDefault(m => m.Id == message.Id)?.Update(message));
 	}
 
-	[RelayCommand]
+	bool CanSend() => !string.IsNullOrWhiteSpace(Draft);
+
+	[RelayCommand(CanExecute = nameof(CanSend))]
 	async Task SendAsync()
 	{
 		var text = Draft.Trim();
@@ -105,11 +152,18 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 	}
 
 	[RelayCommand]
-	async Task RetryAsync(MessageItem item)
+	async Task MessageTappedAsync(MessageItem item)
 	{
-		if (_messenger is null || item.Model.Status != MessageStatus.Failed)
+		if (_messenger is null || Ui.CurrentPage is not { } page)
 			return;
-		await _messenger.RetryAsync(item.Model);
+		var failed = item.Model.Status == MessageStatus.Failed;
+		var choice = failed
+			? await page.DisplayActionSheetAsync("Not delivered", "Cancel", null, "Retry", "Copy")
+			: await page.DisplayActionSheetAsync(null, "Cancel", null, "Copy");
+		if (choice == "Copy")
+			await Clipboard.Default.SetTextAsync(item.Text);
+		else if (choice == "Retry")
+			await _messenger.RetryAsync(item.Model);
 	}
 
 	[RelayCommand]
@@ -122,27 +176,26 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 	}
 
 	[RelayCommand]
-	async Task MoreAsync()
+	async Task ContactInfoAsync()
 	{
 		if (_messenger is null || Ui.CurrentPage is not { } page)
 			return;
-		var choice = await page.DisplayActionSheetAsync(Title, "Cancel", "Delete conversation", "Rename", "Copy their ID");
+		var choice = await page.DisplayActionSheetAsync(Title, "Cancel", "Delete chat", "Rename", "Copy their ID");
 		switch (choice)
 		{
 			case "Rename":
-				var name = await page.DisplayPromptAsync("Rename", "Only you see this name.", initialValue: Title, maxLength: 60);
+				var name = await page.DisplayPromptAsync("Rename", "Only you see this name.", initialValue: HasName ? Title : "", maxLength: 60);
 				if (!string.IsNullOrWhiteSpace(name))
 				{
 					_messenger.AddContact(_peer, name);
-					Title = name.Trim();
-					IsRequest = false;
+					UpdateHeader();
 				}
 				break;
 			case "Copy their ID":
 				await Clipboard.Default.SetTextAsync(Core.Crypto.Nip19.EncodeNpub(_peer));
 				break;
-			case "Delete conversation":
-				if (await Ui.Confirm("Delete conversation?", "Messages are removed from this device. Copies may remain on relays, encrypted.", "Delete"))
+			case "Delete chat":
+				if (await Ui.Confirm("Delete this chat?", "Messages are removed from this device. Encrypted copies may remain on relays.", "Delete"))
 				{
 					_messenger.RemoveContact(_peer);
 					await Shell.Current.GoToAsync("..");
@@ -152,15 +205,19 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 	}
 }
 
+/// <summary>"Today", "Yesterday"… chip between messages of different days.</summary>
+public sealed record DateItem(string Text);
+
 public sealed partial class MessageItem : ObservableObject
 {
-	public MessageItem(ChatMessage message)
+	public MessageItem(ChatMessage message, bool startsGroup)
 	{
 		Model = message;
 		Id = message.Id;
 		Text = message.Text;
 		Time = message.Time.ToLocalTime().ToString("t");
 		IsOutgoing = message.IsOutgoing;
+		StartsGroup = startsGroup;
 		Update(message);
 	}
 
@@ -168,6 +225,8 @@ public sealed partial class MessageItem : ObservableObject
 	public string Text { get; }
 	public string Time { get; }
 	public bool IsOutgoing { get; }
+	/// <summary>First bubble of a run: drawn with a tail and a little extra space above.</summary>
+	public bool StartsGroup { get; }
 
 	[ObservableProperty]
 	public partial ChatMessage Model { get; private set; }
@@ -178,16 +237,27 @@ public sealed partial class MessageItem : ObservableObject
 	[ObservableProperty]
 	public partial bool IsFailed { get; private set; }
 
+	/// <summary>Stored on more than one relay (shown as a double tick).</summary>
+	[ObservableProperty]
+	public partial bool IsWidelyStored { get; private set; }
+
 	public void Update(ChatMessage message)
 	{
 		Model = message;
 		IsFailed = message.Status == MessageStatus.Failed;
-		StatusGlyph = message.Status switch
-		{
-			MessageStatus.Sending => "🕓",
-			MessageStatus.Sent => message.RelaysAccepted > 1 ? "✓✓" : "✓",
-			MessageStatus.Failed => "⚠ tap to retry",
-			_ => "",
-		};
+		IsWidelyStored = message.Status == MessageStatus.Sent && message.RelaysAccepted > 1;
+		StatusGlyph = GlyphFor(message);
 	}
+
+	/// <summary>
+	/// Clock while sending, one tick once a relay accepted it, two ticks once several relays hold it
+	/// (Nostr has no read receipts, so ticks mean "safely stored for delivery", not "read").
+	/// </summary>
+	public static string GlyphFor(ChatMessage message) => message.Status switch
+	{
+		MessageStatus.Sending => Icons.Clock,
+		MessageStatus.Sent => message.RelaysAccepted > 1 ? Icons.DoneAll : Icons.Done,
+		MessageStatus.Failed => Icons.Error,
+		_ => "",
+	};
 }
