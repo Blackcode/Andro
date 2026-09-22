@@ -133,7 +133,7 @@ public class MediaTests
 		var video = RandomNumberGenerator.GetBytes(20_000);
 		var failed = await alice.SendFileAsync(bobKeys.PublicKeyHex, video, "video/mp4");
 		Assert.Equal(MessageStatus.Failed, failed.Status);
-		Assert.NotNull(alice.LastError);
+		Assert.Contains($"127.0.0.1:", alice.LastError); // names the server that refused, and why
 
 		using var server = new FakeBlossom();
 		alice.SetMediaServers([server.Url]);

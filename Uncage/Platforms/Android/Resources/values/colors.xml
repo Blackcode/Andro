@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#1DAA61</color>
-    <!-- Status bar: blends with the white header in light mode (dark icons are set in MainActivity). -->
+    <!-- On Android 15+ the status bar is transparent and shows the app bar container, which MAUI paints
+         with colorPrimary: match the white header so the top of the screen is seamless (like WhatsApp). -->
+    <color name="colorPrimary">#FFFFFF</color>
     <color name="colorPrimaryDark">#FFFFFF</color>
     <color name="colorAccent">#1DAA61</color>
 </resources>

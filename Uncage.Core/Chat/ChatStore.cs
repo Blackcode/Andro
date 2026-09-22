@@ -35,6 +35,11 @@ public sealed class ChatStore
 		{
 			var json = SecretBox.Open(File.ReadAllBytes(path), key);
 			data = JsonSerializer.Deserialize(json, StoreJsonContext.Default.StoreData) ?? new StoreData();
+			// Files from older versions may lack sections that were added later.
+			data.Settings ??= new ChatSettings();
+			data.Contacts ??= [];
+			data.Messages ??= [];
+			data.ProcessedWrapIds ??= [];
 		}
 		return new ChatStore(path, key, data);
 	}

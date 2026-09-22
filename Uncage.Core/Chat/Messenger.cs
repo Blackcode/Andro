@@ -246,9 +246,10 @@ public sealed class Messenger : IAsyncDisposable
 			ciphertext = ReEncrypt(original, attachment);
 		}
 
-		var urls = await _blossom.UploadAsync(ciphertext, _store.Settings.MediaServers, cancellationToken);
+		var upload = await _blossom.UploadAsync(ciphertext, _store.Settings.MediaServers, cancellationToken);
+		var urls = upload.Urls;
 		if (urls.Count == 0)
-			return Fail(sending, "No media server accepted the file.");
+			return Fail(sending, "No media server accepted the file:\n" + string.Join("\n", upload.Errors.Select(e => "• " + e)));
 		_pendingUploads.TryRemove(attachment.EncryptedSha256, out _);
 
 		var uploaded = attachment with { Url = urls[0], Fallbacks = [.. urls.Skip(1)] };

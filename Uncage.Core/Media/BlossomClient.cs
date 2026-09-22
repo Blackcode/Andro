@@ -36,32 +36,44 @@ public sealed class BlossomClient : IDisposable
 		_http.DefaultRequestHeaders.UserAgent.ParseAdd("Uncage");
 	}
 
+	/// <summary>Where an upload landed, and why the other servers refused it.</summary>
+	public sealed record UploadResult(IReadOnlyList<string> Urls, IReadOnlyList<string> Errors);
+
 	/// <summary>Uploads to every server in parallel and returns the URLs that accepted it.</summary>
-	public async Task<IReadOnlyList<string>> UploadAsync(byte[] blob, IEnumerable<string> servers, CancellationToken cancellationToken = default)
+	public async Task<UploadResult> UploadAsync(byte[] blob, IEnumerable<string> servers, CancellationToken cancellationToken = default)
 	{
 		var sha256 = MediaCrypto.Sha256Hex(blob);
 		var uploads = servers.Select(s => s.TrimEnd('/')).Distinct().Select(async server =>
 		{
+			var host = Uri.TryCreate(server, UriKind.Absolute, out var uri) ? uri.Host : server;
 			try
 			{
-				return await UploadOneAsync(server, blob, sha256, cancellationToken);
+				var (url, error) = await UploadOneAsync(server, blob, sha256, cancellationToken);
+				return (Url: url, Error: error is null ? null : $"{host}: {error}");
 			}
 			catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException or InvalidDataException && !cancellationToken.IsCancellationRequested)
 			{
-				return null;
+				var inner = e;
+				while (inner.InnerException is not null)
+					inner = inner.InnerException;
+				return (Url: (string?)null, Error: $"{host}: {(e is TaskCanceledException ? "timed out" : inner.Message)}");
 			}
 		});
-		return [.. (await Task.WhenAll(uploads)).OfType<string>()];
+		var results = await Task.WhenAll(uploads);
+		return new UploadResult([.. results.Select(r => r.Url).OfType<string>()], [.. results.Select(r => r.Error).OfType<string>()]);
 	}
 
-	async Task<string?> UploadOneAsync(string server, byte[] blob, string sha256, CancellationToken cancellationToken)
+	async Task<(string? Url, string? Error)> UploadOneAsync(string server, byte[] blob, string sha256, CancellationToken cancellationToken)
 	{
+		var now = DateTimeOffset.UtcNow;
 		var auth = NostrEvent.CreateSigned(NostrKeys.Generate(), KindBlossomAuth, "Upload encrypted attachment",
 		[
 			["t", "upload"],
 			["x", sha256],
-			["expiration", DateTimeOffset.UtcNow.AddMinutes(10).ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture)],
-		]);
+			["expiration", now.AddMinutes(10).ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture)],
+		],
+		// Slightly in the past: servers reject authorizations "created in the future" if our clock is ahead.
+		createdAt: now.AddMinutes(-1).ToUnixTimeSeconds());
 
 		using var request = new HttpRequestMessage(HttpMethod.Put, server + "/upload");
 		request.Headers.Authorization = new AuthenticationHeaderValue("Nostr", Convert.ToBase64String(Encoding.UTF8.GetBytes(auth.ToJson())));
@@ -71,16 +83,21 @@ public sealed class BlossomClient : IDisposable
 
 		using var response = await _http.SendAsync(request, cancellationToken);
 		if (!response.IsSuccessStatusCode)
-			return null;
+		{
+			// BUD-01: servers explain refusals in the X-Reason header.
+			var reason = response.Headers.TryGetValues("X-Reason", out var values) ? string.Join(" ", values) : response.ReasonPhrase;
+			return (null, $"{(int)response.StatusCode} {reason}".Trim());
+		}
 
 		using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
 		var root = json.RootElement;
 		// The descriptor must describe exactly what we sent.
 		if (root.TryGetProperty("sha256", out var reported) && !string.Equals(reported.GetString(), sha256, StringComparison.OrdinalIgnoreCase))
-			throw new InvalidDataException("Server stored a different blob.");
-		return root.TryGetProperty("url", out var url) && Uri.TryCreate(url.GetString(), UriKind.Absolute, out var uri)
-			? uri.ToString()
+			return (null, "stored a different file");
+		var url = root.TryGetProperty("url", out var u) && Uri.TryCreate(u.GetString(), UriKind.Absolute, out var parsed)
+			? parsed.ToString()
 			: $"{server}/{sha256}";
+		return (url, null);
 	}
 
 	/// <summary>

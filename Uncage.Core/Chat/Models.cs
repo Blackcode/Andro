@@ -40,7 +40,9 @@ public sealed record Contact
 	/// <summary>Local nickname; never published.</summary>
 	public string? Name { get; init; }
 	/// <summary>Where this contact wants to receive messages (their kind 10050 list).</summary>
-	public IReadOnlyList<string> InboxRelays { get; init; } = [];
+	// Getters fall back to defaults: the JSON source generator sets missing init-only properties to null
+	// when reading history files written by older versions.
+	public IReadOnlyList<string> InboxRelays { get => field ?? []; init; } = [];
 	public long InboxRelaysFetchedAt { get; init; }
 	/// <summary>Unknown sender who wrote first; shown as a message request.</summary>
 	public bool IsRequest { get; init; }
@@ -61,9 +63,9 @@ public sealed record Conversation(Contact Contact, ChatMessage? LastMessage, int
 
 public sealed record ChatSettings
 {
-	public IReadOnlyList<string> Relays { get; init; } = DefaultRelays.All;
+	public IReadOnlyList<string> Relays { get => field is { Count: > 0 } ? field : DefaultRelays.All; init; } = DefaultRelays.All;
 	/// <summary>SOCKS5/HTTP proxy for all traffic, e.g. socks5://127.0.0.1:9050 for Tor. Null for direct.</summary>
 	public string? ProxyUrl { get; init; }
 	/// <summary>Blossom servers that store encrypted attachments.</summary>
-	public IReadOnlyList<string> MediaServers { get; init; } = DefaultRelays.MediaServers;
+	public IReadOnlyList<string> MediaServers { get => field is { Count: > 0 } ? field : DefaultRelays.MediaServers; init; } = DefaultRelays.MediaServers;
 }
