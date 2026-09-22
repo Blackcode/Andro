@@ -58,7 +58,7 @@
                             </VerticalStackLayout>
                             <ImageButton Grid.Column="2" WidthRequest="44" HeightRequest="44" Padding="10" BackgroundColor="Transparent"
                                          SemanticProperties.Description="Remove relay"
-                                         Command="{Binding RemoveRelayCommand, Source={RelativeSource AncestorType={x:Type vm:SettingsViewModel}}, x:DataType=vm:SettingsViewModel}" CommandParameter="{Binding .}">
+                                         Command="{Binding Remove}" CommandParameter="{Binding .}">
                                 <ImageButton.Source>
                                     <FontImageSource FontFamily="MaterialIcons" Glyph="{x:Static views:Icons.Delete}"
                                                      Color="{AppThemeBinding Light={StaticResource SubTextLight}, Dark={StaticResource SubTextDark}}" />
@@ -87,12 +87,12 @@
             </Grid>
             <VerticalStackLayout BindableLayout.ItemsSource="{Binding MediaServers}">
                 <BindableLayout.ItemTemplate>
-                    <DataTemplate x:DataType="x:String">
+                    <DataTemplate x:DataType="vm:ServerItem">
                         <Grid ColumnDefinitions="64,*,Auto" Padding="0,2,8,2">
-                            <Label Grid.Column="1" Text="{Binding .}" Style="{StaticResource RowTitle}" FontSize="15" LineBreakMode="MiddleTruncation" VerticalOptions="Center" />
+                            <Label Grid.Column="1" Text="{Binding Url}" Style="{StaticResource RowTitle}" FontSize="15" LineBreakMode="MiddleTruncation" VerticalOptions="Center" />
                             <ImageButton Grid.Column="2" WidthRequest="44" HeightRequest="44" Padding="10" BackgroundColor="Transparent"
                                          SemanticProperties.Description="Remove media server"
-                                         Command="{Binding RemoveMediaServerCommand, Source={RelativeSource AncestorType={x:Type vm:SettingsViewModel}}, x:DataType=vm:SettingsViewModel}" CommandParameter="{Binding .}">
+                                         Command="{Binding Remove}" CommandParameter="{Binding .}">
                                 <ImageButton.Source>
                                     <FontImageSource FontFamily="MaterialIcons" Glyph="{x:Static views:Icons.Delete}"
                                                      Color="{AppThemeBinding Light={StaticResource SubTextLight}, Dark={StaticResource SubTextDark}}" />
@@ -125,7 +125,7 @@
                             <Label Text="{x:Static views:Icons.Block}" Style="{StaticResource Icon}" TextColor="{StaticResource Danger}" />
                             <Label Grid.Column="1" Text="{Binding Name}" Style="{StaticResource RowTitle}" VerticalOptions="Center" LineBreakMode="TailTruncation" />
                             <Button Grid.Column="2" Text="Unblock" Style="{StaticResource TextButton}"
-                                    Command="{Binding UnblockCommand, Source={RelativeSource AncestorType={x:Type vm:SettingsViewModel}}, x:DataType=vm:SettingsViewModel}" CommandParameter="{Binding .}" />
+                                    Command="{Binding Unblock}" CommandParameter="{Binding .}" />
                         </Grid>
                     </DataTemplate>
                 </BindableLayout.ItemTemplate>

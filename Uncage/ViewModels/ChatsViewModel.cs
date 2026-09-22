@@ -93,7 +93,7 @@ public partial class ChatsViewModel(ChatSession session) : ObservableObject
 
 		Conversations.Clear();
 		foreach (var conversation in shown)
-			Conversations.Add(new ConversationItem(conversation));
+			Conversations.Add(new ConversationItem(conversation, OpenCommand));
 
 		EmptyText = _all.Count == 0
 			? "No chats yet.\nTap the green button to start one, or share your ID from the My ID tab."
@@ -129,8 +129,9 @@ public partial class ChatsViewModel(ChatSession session) : ObservableObject
 
 public sealed class ConversationItem
 {
-	public ConversationItem(Conversation conversation)
+	public ConversationItem(Conversation conversation, System.Windows.Input.ICommand open)
 	{
+		Open = open;
 		var contact = conversation.Contact;
 		var last = conversation.LastMessage;
 		PubKey = contact.PubKey;
@@ -146,6 +147,11 @@ public sealed class ConversationItem
 		IsFailed = last?.Status == MessageStatus.Failed;
 	}
 
+	/// <summary>
+	/// Carried by the item so the row doesn't have to find the page's view model through a
+	/// RelativeSource binding (which throws on Windows while rows are being created).
+	/// </summary>
+	public System.Windows.Input.ICommand Open { get; }
 	public string PubKey { get; }
 	public string Title { get; }
 	public string Initial { get; }

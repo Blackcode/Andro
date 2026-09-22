@@ -122,7 +122,7 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 
 		// Like WhatsApp: the first bubble of a run from the same person gets a "tail".
 		var startsGroup = newDay || previous!.IsOutgoing != message.IsOutgoing || message.Time - previous.Model.Time > GroupGap;
-		var item = new MessageItem(message, startsGroup);
+		var item = new MessageItem(message, startsGroup) { Tap = MessageTappedCommand };
 		Rows.Add(item);
 		if (item.IsImage)
 			_ = LoadPreviewAsync(item);
@@ -488,6 +488,8 @@ public sealed partial class MessageItem : ObservableObject
 		Update(message);
 	}
 
+	/// <summary>Set by the chat; carried by the item so the bubble needs no RelativeSource binding.</summary>
+	public System.Windows.Input.ICommand? Tap { get; init; }
 	public string Id => Model.Id;
 	public string Text { get; }
 	public string Time { get; }

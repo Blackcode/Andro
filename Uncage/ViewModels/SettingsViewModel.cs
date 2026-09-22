@@ -14,7 +14,7 @@ public partial class SettingsViewModel(ChatSession session) : ObservableObject
 
 	public ObservableCollection<RelayItem> Relays { get; } = [];
 
-	public ObservableCollection<string> MediaServers { get; } = [];
+	public ObservableCollection<ServerItem> MediaServers { get; } = [];
 
 	public ObservableCollection<BlockedItem> Blocked { get; } = [];
 
@@ -67,21 +67,21 @@ public partial class SettingsViewModel(ChatSession session) : ObservableObject
 		var live = messenger.Relays.ToDictionary(r => r.Url);
 		Relays.Clear();
 		foreach (var url in messenger.Store.Settings.Relays)
-			Relays.Add(new RelayItem(url, live.GetValueOrDefault(url)));
+			Relays.Add(new RelayItem(url, live.GetValueOrDefault(url), RemoveRelayCommand));
 	});
 
 	void RefreshMediaServers()
 	{
 		MediaServers.Clear();
 		foreach (var server in session.Current.Store.Settings.MediaServers)
-			MediaServers.Add(server);
+			MediaServers.Add(new ServerItem(server, RemoveMediaServerCommand));
 	}
 
 	void RefreshBlocked()
 	{
 		Blocked.Clear();
 		foreach (var contact in session.Current.Store.BlockedContacts())
-			Blocked.Add(new BlockedItem(contact.PubKey, contact.DisplayName));
+			Blocked.Add(new BlockedItem(contact.PubKey, contact.DisplayName, UnblockCommand));
 		HasBlocked = Blocked.Count > 0;
 	}
 
@@ -102,9 +102,9 @@ public partial class SettingsViewModel(ChatSession session) : ObservableObject
 	}
 
 	[RelayCommand]
-	async Task RemoveMediaServerAsync(string server)
+	async Task RemoveMediaServerAsync(ServerItem server)
 	{
-		var remaining = session.Current.Store.Settings.MediaServers.Where(s => s != server).ToList();
+		var remaining = session.Current.Store.Settings.MediaServers.Where(s => s != server.Url).ToList();
 		if (remaining.Count == 0)
 		{
 			await Ui.Alert("Keep at least one server", "Photos, videos and voice messages are stored on these servers.");
@@ -218,10 +218,14 @@ public partial class SettingsViewModel(ChatSession session) : ObservableObject
 	}
 }
 
-public sealed record BlockedItem(string PubKey, string Name);
+// Rows carry their own commands so templates need no RelativeSource bindings (they throw on Windows).
+public sealed record BlockedItem(string PubKey, string Name, System.Windows.Input.ICommand Unblock);
 
-public sealed class RelayItem(string url, RelayConnection? connection)
+public sealed record ServerItem(string Url, System.Windows.Input.ICommand Remove);
+
+public sealed class RelayItem(string url, RelayConnection? connection, System.Windows.Input.ICommand remove)
 {
+	public System.Windows.Input.ICommand Remove { get; } = remove;
 	public string Url { get; } = url;
 	public bool IsOnion { get; } = RelayUrl.IsOnion(url);
 	public string Status { get; } = connection?.Status switch

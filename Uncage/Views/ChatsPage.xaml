@@ -85,7 +85,7 @@
                 <DataTemplate x:DataType="vm:ConversationItem">
                     <Grid Padding="16,10" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14" RowDefinitions="Auto,Auto" RowSpacing="2">
                         <Grid.GestureRecognizers>
-                            <TapGestureRecognizer Command="{Binding OpenCommand, Source={RelativeSource AncestorType={x:Type vm:ChatsViewModel}}, x:DataType=vm:ChatsViewModel}" CommandParameter="{Binding .}" />
+                            <TapGestureRecognizer Command="{Binding Open}" CommandParameter="{Binding .}" />
                         </Grid.GestureRecognizers>
 
                         <Border Grid.RowSpan="2" Style="{StaticResource Avatar}" BackgroundColor="{Binding AvatarColor}" VerticalOptions="Center">

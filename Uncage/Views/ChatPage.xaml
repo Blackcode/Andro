@@ -58,7 +58,7 @@
                         </DataTrigger>
                     </Border.Triggers>
                     <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding MessageTappedCommand, Source={RelativeSource AncestorType={x:Type vm:ChatViewModel}}, x:DataType=vm:ChatViewModel}" CommandParameter="{Binding .}" />
+                        <TapGestureRecognizer Command="{Binding Tap}" CommandParameter="{Binding .}" />
                     </Border.GestureRecognizers>
                     <VerticalStackLayout Spacing="3">
                         <!-- Photo -->
@@ -114,7 +114,7 @@
                         </DataTrigger>
                     </Border.Triggers>
                     <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding MessageTappedCommand, Source={RelativeSource AncestorType={x:Type vm:ChatViewModel}}, x:DataType=vm:ChatViewModel}" CommandParameter="{Binding .}" />
+                        <TapGestureRecognizer Command="{Binding Tap}" CommandParameter="{Binding .}" />
                     </Border.GestureRecognizers>
                     <VerticalStackLayout Spacing="3">
                         <!-- Photo -->
