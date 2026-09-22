@@ -6,4 +6,6 @@
 	<!-- Only for scanning contacts' QR codes; the app works without a camera. -->
 	<uses-permission android:name="android.permission.CAMERA" />
 	<uses-feature android:name="android.hardware.camera" android:required="false" />
+	<!-- Short vibration when a QR code is recognized. -->
+	<uses-permission android:name="android.permission.VIBRATE" />
 </manifest>
