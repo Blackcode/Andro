@@ -5,17 +5,14 @@ namespace Andro;
 
 public partial class App : Microsoft.Maui.Controls.Application
 {
-	readonly AppShell _shell;
-
-	public App(AppShell shell)
+	public App()
 	{
 		InitializeComponent();
-		_shell = shell;
 		// Keep the message box visible above the keyboard. Fully qualified because inside the
 		// Android build "Android" and "Application" also name Android SDK types.
 		AndroidSpecific.Application.UseWindowSoftInputModeAdjust(
 			On<AndroidPlatform>(), AndroidSpecific.WindowSoftInputModeAdjust.Resize);
 	}
 
-	protected override Window CreateWindow(IActivationState? activationState) => new(_shell);
+	protected override Window CreateWindow(IActivationState? activationState) => new(new AppShell());
 }

@@ -21,7 +21,6 @@ public static class MauiProgram
 			});
 
 		builder.Services.AddSingleton<ChatSession>();
-		builder.Services.AddSingleton<AppShell>();
 
 		builder.Services.AddTransient<LoadingPage>();
 		builder.Services.AddTransient<WelcomePage>();

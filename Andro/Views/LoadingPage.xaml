@@ -3,5 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Andro.Views.LoadingPage"
              Shell.NavBarIsVisible="False">
-    <ActivityIndicator IsRunning="True" VerticalOptions="Center" HorizontalOptions="Center" />
+    <VerticalStackLayout VerticalOptions="Center" Spacing="16" Padding="32">
+        <ActivityIndicator x:Name="Spinner" IsRunning="True" HorizontalOptions="Center" />
+        <Label x:Name="ErrorText" IsVisible="False" HorizontalTextAlignment="Center" />
+        <Button x:Name="RetryButton" Text="Try again" IsVisible="False" Clicked="OnRetryClicked" HorizontalOptions="Center" />
+    </VerticalStackLayout>
 </ContentPage>

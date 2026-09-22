@@ -21,6 +21,10 @@ public partial class WelcomeViewModel(ChatSession session) : ObservableObject
 			await session.CreateIdentityAsync();
 			await Shell.Current.GoToAsync("//chats");
 		}
+		catch (Exception e)
+		{
+			await Ui.Alert("Could not create identity", $"{e.GetType().Name}: {e.Message}");
+		}
 		finally
 		{
 			IsBusy = false;
@@ -45,6 +49,10 @@ public partial class WelcomeViewModel(ChatSession session) : ObservableObject
 		catch (Exception e) when (e is FormatException or ArgumentException)
 		{
 			await Ui.Alert("Invalid key", "That is not a valid secret key. It should start with nsec1.");
+		}
+		catch (Exception e)
+		{
+			await Ui.Alert("Could not restore identity", $"{e.GetType().Name}: {e.Message}");
 		}
 		finally
 		{
