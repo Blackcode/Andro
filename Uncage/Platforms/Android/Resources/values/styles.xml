@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Shell's bottom tab bar crashed at startup on some devices (Android 15+) with
+        "This component requires that you specify a valid TextAppearance attribute": the tab bar
+        ended up with a style that enforces text appearances looked up from the theme.
+        Give it an explicit style that doesn't enforce anything and names its text appearances
+        directly, so it works whatever the active theme provides.
+    -->
+    <style name="Uncage.BottomNavigationView" parent="Widget.Design.BottomNavigationView">
+        <item name="enforceMaterialTheme">false</item>
+        <item name="enforceTextAppearance">false</item>
+        <item name="itemTextAppearanceInactive">@style/TextAppearance.MaterialComponents.Caption</item>
+        <item name="itemTextAppearanceActive">@style/TextAppearance.MaterialComponents.Caption</item>
+    </style>
+
+    <!--
+        App resources replace library styles of the same name. These are MAUI 10's own definitions
+        (Microsoft.Maui.aar, res/values/styles.xml and styles-material3.xml) unchanged, plus the
+        tab bar style. MAUI switches to one of them after the splash screen.
+    -->
+    <style name="Maui.MainTheme.NoActionBar" parent="Maui.MainTheme">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="windowActionModeOverlay">true</item>
+        <item name="android:actionModeBackground">?attr/colorPrimary</item>
+        <item name="android:actionModeStyle">@style/ActionMode</item>
+        <item name="bottomNavigationViewStyle">@style/Uncage.BottomNavigationView</item>
+    </style>
+
+    <style name="Maui.Material3.Theme.NoActionBar" parent="Maui.Material3.Theme.Base">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="windowActionModeOverlay">true</item>
+        <item name="android:actionModeBackground">?attr/colorSurface</item>
+        <item name="android:actionModeStyle">@style/Material3ActionMode</item>
+        <item name="bottomNavigationViewStyle">@style/Uncage.BottomNavigationView</item>
+    </style>
+</resources>
