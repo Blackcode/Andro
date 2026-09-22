@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using Plugin.Maui.Audio;
 using Uncage.Core.Chat;
+using Uncage.Core.Media;
 using Uncage.Services;
 using Uncage.Views;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -11,6 +13,10 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 {
 	static readonly TimeSpan GroupGap = TimeSpan.FromMinutes(5);
 
+	readonly VoiceRecorder _recorder = new();
+	IDispatcherTimer? _recordingTimer;
+	IAudioPlayer? _player;
+	MessageItem? _playing;
 	Messenger? _messenger;
 	string _peer = "";
 
@@ -31,10 +37,28 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 
 	[ObservableProperty]
 	[NotifyCanExecuteChangedFor(nameof(SendCommand))]
+	[NotifyPropertyChangedFor(nameof(HasDraft))]
 	public partial string Draft { get; set; } = "";
+
+	/// <summary>Like WhatsApp: the send button becomes a microphone when there is no text.</summary>
+	public bool HasDraft => !string.IsNullOrWhiteSpace(Draft);
 
 	[ObservableProperty]
 	public partial bool IsRequest { get; set; }
+
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(CanWrite))]
+	public partial bool IsBlocked { get; set; }
+
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(CanWrite))]
+	public partial bool IsRecording { get; set; }
+
+	[ObservableProperty]
+	public partial string RecordingTime { get; set; } = "0:00";
+
+	/// <summary>The normal message box is shown (not recording, not blocked).</summary>
+	public bool CanWrite => !IsBlocked && !IsRecording;
 
 	/// <summary>Raised when the list should scroll to the newest row.</summary>
 	public event Action<object>? ScrollRequested;
@@ -52,6 +76,7 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 			return;
 		_messenger.MessageAdded += OnMessageAdded;
 		_messenger.MessageUpdated += OnMessageUpdated;
+		_messenger.MessageReplaced += OnMessageReplaced;
 
 		UpdateHeader();
 		Rows.Clear();
@@ -64,10 +89,14 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 
 	public void OnDisappearing()
 	{
+		StopPlayback();
+		if (IsRecording)
+			_ = CancelRecordingAsync();
 		if (_messenger is null)
 			return;
 		_messenger.MessageAdded -= OnMessageAdded;
 		_messenger.MessageUpdated -= OnMessageUpdated;
+		_messenger.MessageReplaced -= OnMessageReplaced;
 		_messenger.MarkRead(_peer);
 	}
 
@@ -79,6 +108,7 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 		Initial = Avatars.InitialFor(contact?.Name ?? "");
 		AvatarColor = Avatars.ColorFor(_peer);
 		IsRequest = contact?.IsRequest ?? false;
+		IsBlocked = contact?.IsBlocked ?? false;
 	}
 
 	/// <summary>Adds a message at the end, with a date separator when the day changes.</summary>
@@ -92,7 +122,35 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 
 		// Like WhatsApp: the first bubble of a run from the same person gets a "tail".
 		var startsGroup = newDay || previous!.IsOutgoing != message.IsOutgoing || message.Time - previous.Model.Time > GroupGap;
-		Rows.Add(new MessageItem(message, startsGroup));
+		var item = new MessageItem(message, startsGroup);
+		Rows.Add(item);
+		if (item.IsImage)
+			_ = LoadPreviewAsync(item);
+	}
+
+	/// <summary>Photos are fetched (or read from the encrypted cache) as soon as they're shown.</summary>
+	async Task LoadPreviewAsync(MessageItem item)
+	{
+		// Our own photos come from the local cache, even while still uploading.
+		if (_messenger is null || item.Model.Attachment is null)
+			return;
+		item.IsLoading = true;
+		try
+		{
+			var bytes = await _messenger.GetAttachmentAsync(item.Model.Attachment!);
+			if (bytes is null)
+				item.LoadFailed = true;
+			else
+				item.Preview = ImageSource.FromStream(() => new MemoryStream(bytes));
+		}
+		catch (Exception)
+		{
+			item.LoadFailed = true;
+		}
+		finally
+		{
+			item.IsLoading = false;
+		}
 	}
 
 	void OnMessageAdded(ChatMessage message)
@@ -129,7 +187,15 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 		Ui.OnMainThread(() => Rows.OfType<MessageItem>().FirstOrDefault(m => m.Id == message.Id)?.Update(message));
 	}
 
-	bool CanSend() => !string.IsNullOrWhiteSpace(Draft);
+	/// <summary>An attachment finished uploading and got its final id.</summary>
+	void OnMessageReplaced(string oldId, ChatMessage message)
+	{
+		if (message.PeerPubKey != _peer)
+			return;
+		Ui.OnMainThread(() => Rows.OfType<MessageItem>().FirstOrDefault(m => m.Id == oldId)?.Update(message));
+	}
+
+	bool CanSend() => HasDraft;
 
 	[RelayCommand(CanExecute = nameof(CanSend))]
 	async Task SendAsync()
@@ -144,7 +210,7 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 		{
 			await _messenger.SendAsync(_peer, text);
 		}
-		catch (ArgumentException e)
+		catch (Exception e) when (e is ArgumentException or InvalidOperationException)
 		{
 			Draft = text;
 			await Ui.Alert("Not sent", e.Message);
@@ -152,18 +218,187 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 	}
 
 	[RelayCommand]
+	async Task AttachAsync()
+	{
+		if (Ui.CurrentPage is not { } page)
+			return;
+		var choice = await page.DisplayActionSheetAsync("Send", "Cancel", null, "Photo from gallery", "Video from gallery", "Record video", "Audio file");
+		await SendMediaAsync(choice switch
+		{
+			"Photo from gallery" => MediaInput.PickPhotosAsync,
+			"Video from gallery" => MediaInput.PickVideosAsync,
+			"Record video" => One(MediaInput.CaptureVideoAsync),
+			"Audio file" => One(MediaInput.PickAudioAsync),
+			_ => null,
+		});
+	}
+
+	[RelayCommand]
+	Task CameraAsync() => SendMediaAsync(One(MediaInput.CapturePhotoAsync));
+
+	static Func<Task<IReadOnlyList<MediaFile>>> One(Func<Task<MediaFile?>> source) =>
+		async () => await source() is { } file ? [file] : [];
+
+	async Task SendMediaAsync(Func<Task<IReadOnlyList<MediaFile>>>? source)
+	{
+		if (source is null || _messenger is null)
+			return;
+		IReadOnlyList<MediaFile> files;
+		try
+		{
+			files = await source();
+		}
+		catch (PermissionException)
+		{
+			await Ui.Alert("Permission needed", "Allow access in your phone's settings to send photos and videos.");
+			return;
+		}
+		catch (FeatureNotSupportedException)
+		{
+			await Ui.Alert("Not available", "This device can't do that.");
+			return;
+		}
+		foreach (var file in files)
+			await SendFileAsync(file);
+	}
+
+	async Task SendFileAsync(MediaFile file)
+	{
+		if (_messenger is null)
+			return;
+		if (IsRequest)
+			AcceptRequest();
+		try
+		{
+			var sent = await _messenger.SendFileAsync(_peer, file.Content, file.MimeType, durationSeconds: file.DurationSeconds);
+			if (sent.Status == MessageStatus.Failed && _messenger.LastError is { } reason)
+				await Ui.Alert("Not sent", $"{reason} Tap the message to try again, or check the media servers in Settings.");
+		}
+		catch (Exception e) when (e is ArgumentException or InvalidOperationException)
+		{
+			await Ui.Alert("Not sent", e.Message);
+		}
+	}
+
+	[RelayCommand]
+	async Task StartRecordingAsync()
+	{
+		if (!await _recorder.StartAsync())
+		{
+			await Ui.Alert("Microphone needed", "Allow microphone access in your phone's settings to send voice messages.");
+			return;
+		}
+		IsRecording = true;
+		RecordingTime = "0:00";
+		_recordingTimer = Application.Current!.Dispatcher.CreateTimer();
+		_recordingTimer.Interval = TimeSpan.FromMilliseconds(500);
+		_recordingTimer.Tick += (_, _) => RecordingTime = MessageItem.FormatDuration(_recorder.Elapsed.TotalSeconds);
+		_recordingTimer.Start();
+	}
+
+	[RelayCommand]
+	async Task SendRecordingAsync()
+	{
+		StopTimer();
+		IsRecording = false;
+		var recording = await _recorder.StopAsync();
+		if (recording is not null)
+			await SendFileAsync(recording);
+	}
+
+	[RelayCommand]
+	async Task CancelRecordingAsync()
+	{
+		StopTimer();
+		IsRecording = false;
+		await _recorder.CancelAsync();
+	}
+
+	void StopTimer()
+	{
+		_recordingTimer?.Stop();
+		_recordingTimer = null;
+	}
+
+	[RelayCommand]
 	async Task MessageTappedAsync(MessageItem item)
 	{
 		if (_messenger is null || Ui.CurrentPage is not { } page)
 			return;
-		var failed = item.Model.Status == MessageStatus.Failed;
-		var choice = failed
-			? await page.DisplayActionSheetAsync("Not delivered", "Cancel", null, "Retry", "Copy")
-			: await page.DisplayActionSheetAsync(null, "Cancel", null, "Copy");
-		if (choice == "Copy")
-			await Clipboard.Default.SetTextAsync(item.Text);
-		else if (choice == "Retry")
-			await _messenger.RetryAsync(item.Model);
+
+		if (item.Model.Status == MessageStatus.Failed)
+		{
+			var retry = await page.DisplayActionSheetAsync("Not delivered", "Cancel", null, "Retry", item.HasText ? "Copy" : "Delete");
+			if (retry == "Retry")
+				await _messenger.RetryAsync(item.Model);
+			else if (retry == "Copy")
+				await Clipboard.Default.SetTextAsync(item.Text);
+			return;
+		}
+
+		switch (item.Model.Attachment?.Kind)
+		{
+			case AttachmentKind.Image or AttachmentKind.Video:
+				await Shell.Current.GoToAsync("media", new Dictionary<string, object> { ["message"] = item.Model });
+				break;
+			case AttachmentKind.Audio:
+				await TogglePlaybackAsync(item);
+				break;
+			case AttachmentKind.File:
+				await ShareFileAsync(item);
+				break;
+			default:
+				if (await page.DisplayActionSheetAsync(null, "Cancel", null, "Copy") == "Copy")
+					await Clipboard.Default.SetTextAsync(item.Text);
+				break;
+		}
+	}
+
+	async Task TogglePlaybackAsync(MessageItem item)
+	{
+		if (_playing == item)
+		{
+			StopPlayback();
+			return;
+		}
+		StopPlayback();
+		item.IsLoading = true;
+		var bytes = await _messenger!.GetAttachmentAsync(item.Model.Attachment!);
+		item.IsLoading = false;
+		if (bytes is null)
+		{
+			item.LoadFailed = true;
+			return;
+		}
+		_player = AudioManager.Current.CreatePlayer(new MemoryStream(bytes));
+		_player.PlaybackEnded += (_, _) => Ui.OnMainThread(StopPlayback);
+		_playing = item;
+		item.IsPlaying = true;
+		_player.Play();
+	}
+
+	void StopPlayback()
+	{
+		if (_playing is not null)
+			_playing.IsPlaying = false;
+		_playing = null;
+		_player?.Stop();
+		_player?.Dispose();
+		_player = null;
+	}
+
+	async Task ShareFileAsync(MessageItem item)
+	{
+		var bytes = await _messenger!.GetAttachmentAsync(item.Model.Attachment!);
+		if (bytes is null)
+		{
+			await Ui.Alert("Not available", "The file couldn't be downloaded from any of its servers.");
+			return;
+		}
+		// Sharing hands the decrypted file to another app; it's removed from our cache the next time a chat opens.
+		var path = Path.Combine(FileSystem.CacheDirectory, "share-" + Guid.NewGuid().ToString("N") + MediaInput.ExtensionFor(item.Model.Attachment!.MimeType));
+		await File.WriteAllBytesAsync(path, bytes);
+		await Share.Default.RequestAsync(new ShareFileRequest { Title = "Open file", File = new ShareFile(path, item.Model.Attachment.MimeType) });
 	}
 
 	[RelayCommand]
@@ -176,11 +411,29 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 	}
 
 	[RelayCommand]
+	async Task BlockAsync()
+	{
+		if (_messenger is null)
+			return;
+		if (!await Ui.Confirm($"Block {Title}?", "Blocked contacts can't send you messages. They are not told that you blocked them.", "Block"))
+			return;
+		_messenger.Block(_peer);
+		UpdateHeader();
+	}
+
+	[RelayCommand]
+	void Unblock()
+	{
+		_messenger?.Unblock(_peer);
+		UpdateHeader();
+	}
+
+	[RelayCommand]
 	async Task ContactInfoAsync()
 	{
 		if (_messenger is null || Ui.CurrentPage is not { } page)
 			return;
-		var choice = await page.DisplayActionSheetAsync(Title, "Cancel", "Delete chat", "Rename", "Copy their ID");
+		var choice = await page.DisplayActionSheetAsync(Title, "Cancel", "Delete chat", "Rename", "Copy their ID", IsBlocked ? "Unblock" : "Block");
 		switch (choice)
 		{
 			case "Rename":
@@ -193,6 +446,12 @@ public partial class ChatViewModel(ChatSession session) : ObservableObject, IQue
 				break;
 			case "Copy their ID":
 				await Clipboard.Default.SetTextAsync(Core.Crypto.Nip19.EncodeNpub(_peer));
+				break;
+			case "Block":
+				await BlockAsync();
+				break;
+			case "Unblock":
+				Unblock();
 				break;
 			case "Delete chat":
 				if (await Ui.Confirm("Delete this chat?", "Messages are removed from this device. Encrypted copies may remain on relays.", "Delete"))
@@ -213,22 +472,38 @@ public sealed partial class MessageItem : ObservableObject
 	public MessageItem(ChatMessage message, bool startsGroup)
 	{
 		Model = message;
-		Id = message.Id;
 		Text = message.Text;
 		Time = message.Time.ToLocalTime().ToString("t");
 		IsOutgoing = message.IsOutgoing;
 		StartsGroup = startsGroup;
+		var kind = message.Attachment?.Kind;
+		IsImage = kind == AttachmentKind.Image;
+		IsVideo = kind == AttachmentKind.Video;
+		IsAudio = kind == AttachmentKind.Audio;
+		IsFile = kind == AttachmentKind.File;
+		HasText = message.Attachment is null;
+		MediaLabel = message.Attachment is { } a
+			? a.DurationSeconds is { } d ? FormatDuration(d) : SizeLabel(a.Size)
+			: "";
 		Update(message);
 	}
 
-	public string Id { get; }
+	public string Id => Model.Id;
 	public string Text { get; }
 	public string Time { get; }
 	public bool IsOutgoing { get; }
 	/// <summary>First bubble of a run: drawn with a tail and a little extra space above.</summary>
 	public bool StartsGroup { get; }
+	public bool HasText { get; }
+	public bool IsImage { get; }
+	public bool IsVideo { get; }
+	public bool IsAudio { get; }
+	public bool IsFile { get; }
+	/// <summary>Duration for audio/video, size for other files.</summary>
+	public string MediaLabel { get; }
 
 	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(Id))]
 	public partial ChatMessage Model { get; private set; }
 
 	[ObservableProperty]
@@ -240,6 +515,24 @@ public sealed partial class MessageItem : ObservableObject
 	/// <summary>Stored on more than one relay (shown as a double tick).</summary>
 	[ObservableProperty]
 	public partial bool IsWidelyStored { get; private set; }
+
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(HasPreview))]
+	public partial ImageSource? Preview { get; set; }
+
+	public bool HasPreview => Preview is not null;
+
+	[ObservableProperty]
+	public partial bool IsLoading { get; set; }
+
+	[ObservableProperty]
+	public partial bool LoadFailed { get; set; }
+
+	[ObservableProperty]
+	[NotifyPropertyChangedFor(nameof(PlayGlyph))]
+	public partial bool IsPlaying { get; set; }
+
+	public string PlayGlyph => IsPlaying ? Icons.Pause : Icons.Play;
 
 	public void Update(ChatMessage message)
 	{
@@ -259,5 +552,17 @@ public sealed partial class MessageItem : ObservableObject
 		MessageStatus.Sent => message.RelaysAccepted > 1 ? Icons.DoneAll : Icons.Done,
 		MessageStatus.Failed => Icons.Error,
 		_ => "",
+	};
+
+	public static string FormatDuration(double seconds)
+	{
+		var t = TimeSpan.FromSeconds(Math.Max(0, seconds));
+		return t.TotalHours >= 1 ? t.ToString(@"h\:mm\:ss") : t.ToString(@"m\:ss");
+	}
+
+	static string SizeLabel(long bytes) => bytes switch
+	{
+		< 1024 * 1024 => $"{Math.Max(1, bytes / 1024)} KB",
+		_ => $"{bytes / (1024.0 * 1024):0.#} MB",
 	};
 }

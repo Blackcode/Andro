@@ -10,5 +10,6 @@ public partial class AppShell : Shell
 		Routing.RegisterRoute("chat", typeof(ChatPage));
 		Routing.RegisterRoute("addcontact", typeof(AddContactPage));
 		Routing.RegisterRoute("scan", typeof(ScanPage));
+		Routing.RegisterRoute("media", typeof(MediaViewerPage));
 	}
 }

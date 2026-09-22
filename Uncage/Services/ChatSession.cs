@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Uncage.Core.Chat;
 using Uncage.Core.Crypto;
+using Uncage.Core.Media;
 
 namespace Uncage.Services;
 
@@ -74,6 +75,7 @@ public sealed class ChatSession
 			{
 				await messenger.DisposeAsync();
 				ChatStore.Delete(HistoryPath(messenger.PubKey));
+				new MediaCache(Path.Combine(FileSystem.AppDataDirectory, $"media-{messenger.PubKey[..16]}"), []).Clear();
 			}
 			SecureStorage.Default.Remove(SecretKeyName);
 			SecureStorage.Default.Remove(StorageKeyName);
@@ -104,7 +106,8 @@ public sealed class ChatSession
 			store = ChatStore.Open(path, storageKey);
 		}
 
-		Messenger = new Messenger(keys, store);
+		var media = new MediaCache(Path.Combine(FileSystem.AppDataDirectory, $"media-{keys.PublicKeyHex[..16]}"), storageKey);
+		Messenger = new Messenger(keys, store, mediaCache: media);
 		await Messenger.StartAsync();
 	}
 

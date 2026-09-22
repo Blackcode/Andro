@@ -12,6 +12,11 @@
         <!-- Camera, for scanning contacts' QR codes. -->
         <key>com.apple.security.device.camera</key>
         <true/>
+        <!-- Microphone, for voice messages; user-selected files, for sending photos, videos and audio. -->
+        <key>com.apple.security.device.audio-input</key>
+        <true/>
+        <key>com.apple.security.files.user-selected.read-only</key>
+        <true/>
     </dict>
 </plist>
 

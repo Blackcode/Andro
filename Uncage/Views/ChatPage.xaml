@@ -60,8 +60,39 @@
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Command="{Binding MessageTappedCommand, Source={RelativeSource AncestorType={x:Type vm:ChatViewModel}}, x:DataType=vm:ChatViewModel}" CommandParameter="{Binding .}" />
                     </Border.GestureRecognizers>
-                    <VerticalStackLayout Spacing="1">
-                        <Label Text="{Binding Text}" Style="{StaticResource RowTitle}" FontSize="15" />
+                    <VerticalStackLayout Spacing="3">
+                        <!-- Photo -->
+                        <Grid IsVisible="{Binding IsImage}" WidthRequest="240" HeightRequest="240" Margin="-5,-2,-5,0">
+                            <Border StrokeThickness="0" StrokeShape="RoundRectangle 6" BackgroundColor="#33000000">
+                                <Image Source="{Binding Preview}" Aspect="AspectFill" />
+                            </Border>
+                            <ActivityIndicator IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}" Color="White" WidthRequest="32" HeightRequest="32" />
+                            <Label Text="{x:Static views:Icons.BrokenImage}" IsVisible="{Binding LoadFailed}" Style="{StaticResource Icon}" FontSize="40" TextColor="White" />
+                        </Grid>
+                        <!-- Video -->
+                        <Grid IsVisible="{Binding IsVideo}" WidthRequest="240" HeightRequest="150" Margin="-5,-2,-5,0">
+                            <Border StrokeThickness="0" StrokeShape="RoundRectangle 6" BackgroundColor="#CC111B21" />
+                            <Label Text="{x:Static views:Icons.PlayCircle}" Style="{StaticResource Icon}" FontSize="56" TextColor="White" />
+                            <Label Text="{Binding MediaLabel}" TextColor="White" FontSize="12" Margin="8,0,0,6" HorizontalOptions="Start" VerticalOptions="End" />
+                        </Grid>
+                        <!-- Voice message / audio -->
+                        <Grid IsVisible="{Binding IsAudio}" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" WidthRequest="230">
+                            <Grid WidthRequest="40" HeightRequest="40">
+                                <Label Text="{Binding PlayGlyph}" Style="{StaticResource Icon}" FontSize="34" IsVisible="{Binding IsLoading, Converter={StaticResource InvertedBool}}" />
+                                <ActivityIndicator IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}" WidthRequest="24" HeightRequest="24" />
+                            </Grid>
+                            <Label Grid.Column="1" Text="{x:Static views:Icons.Audio}" Style="{StaticResource Icon}" FontSize="22" HorizontalOptions="Start" />
+                            <Label Grid.Column="2" Text="{Binding MediaLabel}" Style="{StaticResource Caption}" FontSize="12" VerticalOptions="Center" />
+                        </Grid>
+                        <!-- Other file -->
+                        <Grid IsVisible="{Binding IsFile}" ColumnDefinitions="Auto,*" ColumnSpacing="8" WidthRequest="220">
+                            <Label Text="{x:Static views:Icons.File}" Style="{StaticResource Icon}" FontSize="32" />
+                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                                <Label Text="File" Style="{StaticResource RowTitle}" FontSize="15" />
+                                <Label Text="{Binding MediaLabel}" Style="{StaticResource Caption}" FontSize="12" />
+                            </VerticalStackLayout>
+                        </Grid>
+                        <Label Text="{Binding Text}" IsVisible="{Binding HasText}" Style="{StaticResource RowTitle}" FontSize="15" />
                         <Label Text="{Binding Time}" Style="{StaticResource Caption}" FontSize="11" HorizontalOptions="End" />
                     </VerticalStackLayout>
                 </Border>
@@ -85,8 +116,39 @@
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Command="{Binding MessageTappedCommand, Source={RelativeSource AncestorType={x:Type vm:ChatViewModel}}, x:DataType=vm:ChatViewModel}" CommandParameter="{Binding .}" />
                     </Border.GestureRecognizers>
-                    <VerticalStackLayout Spacing="1">
-                        <Label Text="{Binding Text}" Style="{StaticResource RowTitle}" FontSize="15" />
+                    <VerticalStackLayout Spacing="3">
+                        <!-- Photo -->
+                        <Grid IsVisible="{Binding IsImage}" WidthRequest="240" HeightRequest="240" Margin="-5,-2,-5,0">
+                            <Border StrokeThickness="0" StrokeShape="RoundRectangle 6" BackgroundColor="#33000000">
+                                <Image Source="{Binding Preview}" Aspect="AspectFill" />
+                            </Border>
+                            <ActivityIndicator IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}" Color="White" WidthRequest="32" HeightRequest="32" />
+                            <Label Text="{x:Static views:Icons.BrokenImage}" IsVisible="{Binding LoadFailed}" Style="{StaticResource Icon}" FontSize="40" TextColor="White" />
+                        </Grid>
+                        <!-- Video -->
+                        <Grid IsVisible="{Binding IsVideo}" WidthRequest="240" HeightRequest="150" Margin="-5,-2,-5,0">
+                            <Border StrokeThickness="0" StrokeShape="RoundRectangle 6" BackgroundColor="#CC111B21" />
+                            <Label Text="{x:Static views:Icons.PlayCircle}" Style="{StaticResource Icon}" FontSize="56" TextColor="White" />
+                            <Label Text="{Binding MediaLabel}" TextColor="White" FontSize="12" Margin="8,0,0,6" HorizontalOptions="Start" VerticalOptions="End" />
+                        </Grid>
+                        <!-- Voice message / audio -->
+                        <Grid IsVisible="{Binding IsAudio}" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" WidthRequest="230">
+                            <Grid WidthRequest="40" HeightRequest="40">
+                                <Label Text="{Binding PlayGlyph}" Style="{StaticResource Icon}" FontSize="34" IsVisible="{Binding IsLoading, Converter={StaticResource InvertedBool}}" />
+                                <ActivityIndicator IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}" WidthRequest="24" HeightRequest="24" />
+                            </Grid>
+                            <Label Grid.Column="1" Text="{x:Static views:Icons.Audio}" Style="{StaticResource Icon}" FontSize="22" HorizontalOptions="Start" />
+                            <Label Grid.Column="2" Text="{Binding MediaLabel}" Style="{StaticResource Caption}" FontSize="12" VerticalOptions="Center" />
+                        </Grid>
+                        <!-- Other file -->
+                        <Grid IsVisible="{Binding IsFile}" ColumnDefinitions="Auto,*" ColumnSpacing="8" WidthRequest="220">
+                            <Label Text="{x:Static views:Icons.File}" Style="{StaticResource Icon}" FontSize="32" />
+                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                                <Label Text="File" Style="{StaticResource RowTitle}" FontSize="15" />
+                                <Label Text="{Binding MediaLabel}" Style="{StaticResource Caption}" FontSize="12" />
+                            </VerticalStackLayout>
+                        </Grid>
+                        <Label Text="{Binding Text}" IsVisible="{Binding HasText}" Style="{StaticResource RowTitle}" FontSize="15" />
                         <HorizontalStackLayout Spacing="3" HorizontalOptions="End">
                             <Label Text="{Binding Time}" Style="{StaticResource Caption}" FontSize="11" VerticalOptions="Center" />
                             <Label Text="{Binding StatusGlyph}" Style="{StaticResource Icon}" FontSize="15">
@@ -112,10 +174,11 @@
         <!-- Message request banner -->
         <Border IsVisible="{Binding IsRequest}" Padding="16,10" StrokeThickness="0"
                 BackgroundColor="{AppThemeBinding Light={StaticResource PageLight}, Dark={StaticResource IncomingDark}}">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
                 <Label Style="{StaticResource Caption}" VerticalOptions="Center"
                        Text="This person isn't in your contacts. Only reply if you know who they are." />
-                <Button Grid.Column="1" Text="Accept" Style="{StaticResource PrimaryButton}" HeightRequest="38" Padding="16,0" Command="{Binding AcceptRequestCommand}" />
+                <Button Grid.Column="1" Text="Block" Style="{StaticResource DangerButton}" HeightRequest="38" Padding="14,0" Command="{Binding BlockCommand}" />
+                <Button Grid.Column="2" Text="Accept" Style="{StaticResource PrimaryButton}" HeightRequest="38" Padding="16,0" Command="{Binding AcceptRequestCommand}" />
             </Grid>
         </Border>
 
@@ -141,22 +204,90 @@
             </CollectionView.Footer>
         </CollectionView>
 
-        <!-- Composer -->
-        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="6" Padding="8,6,8,16">
-            <Border Padding="16,0" StrokeThickness="0" StrokeShape="RoundRectangle 24" MinimumHeightRequest="48"
+        <!-- Composer: text box with attach/camera, and send (or microphone when empty) -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="6" Padding="8,6,8,16" IsVisible="{Binding CanWrite}">
+            <Border Padding="14,0,6,0" StrokeThickness="0" StrokeShape="RoundRectangle 24" MinimumHeightRequest="48"
                     BackgroundColor="{AppThemeBinding Light={StaticResource IncomingLight}, Dark={StaticResource IncomingDark}}">
-                <Editor x:Name="Composer" Focused="OnComposerFocused" Text="{Binding Draft}" Placeholder="Message" AutoSize="TextChanges" MaximumHeightRequest="140" FontSize="16"
-                        BackgroundColor="Transparent" VerticalOptions="Center"
-                        PlaceholderColor="{AppThemeBinding Light={StaticResource SubTextLight}, Dark={StaticResource SubTextDark}}" />
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                    <Editor x:Name="Composer" Focused="OnComposerFocused" Text="{Binding Draft}" Placeholder="Message" AutoSize="TextChanges" MaximumHeightRequest="140" FontSize="16"
+                            BackgroundColor="Transparent" VerticalOptions="Center"
+                            PlaceholderColor="{AppThemeBinding Light={StaticResource SubTextLight}, Dark={StaticResource SubTextDark}}" />
+                    <ImageButton Grid.Column="1" Command="{Binding AttachCommand}" WidthRequest="40" HeightRequest="44" Padding="8" VerticalOptions="End"
+                                 BackgroundColor="Transparent" SemanticProperties.Description="Attach photo, video or audio">
+                        <ImageButton.Source>
+                            <FontImageSource FontFamily="MaterialIcons" Glyph="{x:Static views:Icons.Attach}"
+                                             Color="{AppThemeBinding Light={StaticResource SubTextLight}, Dark={StaticResource SubTextDark}}" />
+                        </ImageButton.Source>
+                    </ImageButton>
+                    <ImageButton Grid.Column="2" Command="{Binding CameraCommand}" WidthRequest="40" HeightRequest="44" Padding="8" VerticalOptions="End"
+                                 BackgroundColor="Transparent" SemanticProperties.Description="Take a photo">
+                        <ImageButton.Source>
+                            <FontImageSource FontFamily="MaterialIcons" Glyph="{x:Static views:Icons.Camera}"
+                                             Color="{AppThemeBinding Light={StaticResource SubTextLight}, Dark={StaticResource SubTextDark}}" />
+                        </ImageButton.Source>
+                    </ImageButton>
+                </Grid>
             </Border>
             <Border Grid.Column="1" WidthRequest="48" HeightRequest="48" StrokeThickness="0" StrokeShape="RoundRectangle 24" VerticalOptions="End"
-                    BackgroundColor="{AppThemeBinding Light={StaticResource Green}, Dark={StaticResource GreenDark}}" SemanticProperties.Description="Send">
+                    BackgroundColor="{AppThemeBinding Light={StaticResource Green}, Dark={StaticResource GreenDark}}">
+                <Grid>
+                    <Label Text="{x:Static views:Icons.Send}" Style="{StaticResource Icon}" FontSize="22" Margin="3,0,0,0" IsVisible="{Binding HasDraft}"
+                           TextColor="{AppThemeBinding Light=White, Dark={StaticResource PageDark}}" SemanticProperties.Description="Send">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding SendCommand}" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                    <Label Text="{x:Static views:Icons.Mic}" Style="{StaticResource Icon}" FontSize="24" IsVisible="{Binding HasDraft, Converter={StaticResource InvertedBool}}"
+                           TextColor="{AppThemeBinding Light=White, Dark={StaticResource PageDark}}" SemanticProperties.Description="Record a voice message">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding StartRecordingCommand}" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Recording a voice message -->
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" Padding="8,6,8,16" IsVisible="{Binding IsRecording}">
+            <Border WidthRequest="48" HeightRequest="48" StrokeThickness="0" StrokeShape="RoundRectangle 24"
+                    BackgroundColor="{AppThemeBinding Light={StaticResource IncomingLight}, Dark={StaticResource IncomingDark}}" SemanticProperties.Description="Cancel recording">
                 <Border.GestureRecognizers>
-                    <TapGestureRecognizer Command="{Binding SendCommand}" />
+                    <TapGestureRecognizer Command="{Binding CancelRecordingCommand}" />
+                </Border.GestureRecognizers>
+                <Label Text="{x:Static views:Icons.Delete}" Style="{StaticResource Icon}" FontSize="24" TextColor="{StaticResource Danger}" />
+            </Border>
+            <Border Grid.Column="1" Padding="16,0" StrokeThickness="0" StrokeShape="RoundRectangle 24" HeightRequest="48"
+                    BackgroundColor="{AppThemeBinding Light={StaticResource IncomingLight}, Dark={StaticResource IncomingDark}}">
+                <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                    <Ellipse WidthRequest="10" HeightRequest="10" Fill="{StaticResource Danger}" VerticalOptions="Center" />
+                    <Label Text="{Binding RecordingTime}" Style="{StaticResource RowTitle}" VerticalOptions="Center" />
+                    <Label Text="Recording…" Style="{StaticResource Caption}" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+            </Border>
+            <Border Grid.Column="2" WidthRequest="48" HeightRequest="48" StrokeThickness="0" StrokeShape="RoundRectangle 24"
+                    BackgroundColor="{AppThemeBinding Light={StaticResource Green}, Dark={StaticResource GreenDark}}" SemanticProperties.Description="Send voice message">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding SendRecordingCommand}" />
                 </Border.GestureRecognizers>
                 <Label Text="{x:Static views:Icons.Send}" Style="{StaticResource Icon}" FontSize="22" Margin="3,0,0,0"
                        TextColor="{AppThemeBinding Light=White, Dark={StaticResource PageDark}}" />
             </Border>
         </Grid>
+
+        <!-- Blocked -->
+        <Border Grid.Row="2" IsVisible="{Binding IsBlocked}" Padding="16,14,16,20" StrokeThickness="0"
+                BackgroundColor="{AppThemeBinding Light={StaticResource PageLight}, Dark={StaticResource IncomingDark}}">
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding UnblockCommand}" />
+            </Border.GestureRecognizers>
+            <Label HorizontalTextAlignment="Center" Style="{StaticResource Caption}" FontSize="14">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span Text="You blocked this contact. " />
+                        <Span Text="Tap to unblock." TextColor="{AppThemeBinding Light={StaticResource Green}, Dark={StaticResource GreenDark}}" />
+                    </FormattedString>
+                </Label.FormattedText>
+            </Label>
+        </Border>
     </Grid>
 </ContentPage>

@@ -57,7 +57,7 @@ jobs:
             exit 1
           fi
 
-      - name: Build signed APK
+      - name: Build signed APK and Play Store bundle
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
@@ -67,7 +67,7 @@ jobs:
           IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION"
           VERSION_CODE=$((MAJOR * 1000000 + MINOR * 1000 + PATCH))
           dotnet publish Uncage/Uncage.csproj -f net10.0-android -c Release \
-            -p:AndroidPackageFormat=apk \
+            -p:AndroidPackageFormats=aab%3Bapk \
             -p:ApplicationDisplayVersion="$VERSION" \
             -p:ApplicationVersion=$VERSION_CODE \
             -p:AndroidKeyStore=true \
@@ -76,7 +76,8 @@ jobs:
             -p:AndroidSigningStorePass=env:ANDROID_KEYSTORE_PASSWORD \
             -p:AndroidSigningKeyPass=env:ANDROID_KEYSTORE_PASSWORD
           cp Uncage/bin/Release/net10.0-android/publish/*-Signed.apk "Uncage-$VERSION.apk"
-          sha256sum "Uncage-$VERSION.apk" > "Uncage-$VERSION.apk.sha256"
+          cp Uncage/bin/Release/net10.0-android/publish/*-Signed.aab "Uncage-$VERSION.aab"
+          sha256sum "Uncage-$VERSION.apk" "Uncage-$VERSION.aab" > "Uncage-$VERSION.sha256"
           rm -f "$RUNNER_TEMP/release.keystore"
 
       - name: Publish GitHub Release
@@ -89,11 +90,14 @@ jobs:
           Install: download Uncage-$VERSION.apk on your phone and open it (allow installing from this source when asked).
           Every release is signed with the same key, so it installs as an update and keeps your chats.
 
-          SHA-256: $(cut -d' ' -f1 "Uncage-$VERSION.apk.sha256")"
+          Uncage-$VERSION.aab is the Android App Bundle for uploading to Google Play.
+
+          SHA-256:
+          $(cat "Uncage-$VERSION.sha256")"
           if gh release view "$TAG" > /dev/null 2>&1; then
-            gh release upload "$TAG" "Uncage-$VERSION.apk" "Uncage-$VERSION.apk.sha256" --clobber
+            gh release upload "$TAG" "Uncage-$VERSION.apk" "Uncage-$VERSION.aab" "Uncage-$VERSION.sha256" --clobber
           else
             # --target creates the tag on this exact commit when it doesn't exist yet (manual runs).
-            gh release create "$TAG" "Uncage-$VERSION.apk" "Uncage-$VERSION.apk.sha256" \
+            gh release create "$TAG" "Uncage-$VERSION.apk" "Uncage-$VERSION.aab" "Uncage-$VERSION.sha256" \
               --target "$GITHUB_SHA" --title "Uncage $VERSION" --notes "$NOTES"
           fi

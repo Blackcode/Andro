@@ -78,6 +78,60 @@
             <Button Text="Restore default relays" Style="{StaticResource TextButton}" HorizontalOptions="Start" Margin="52,4,0,0" Command="{Binding ResetRelaysCommand}" />
             <BoxView Style="{StaticResource Divider}" Margin="64,4,0,0" />
 
+            <!-- Media servers -->
+            <Label Text="Media servers" Style="{StaticResource SectionTitle}" />
+            <Grid ColumnDefinitions="64,*" Padding="0,0,16,6">
+                <Label Text="{x:Static views:Icons.Image}" Style="{StaticResource Icon}" VerticalOptions="Start" />
+                <Label Grid.Column="1" Style="{StaticResource Caption}"
+                       Text="Photos, videos and voice messages are encrypted on your phone, then stored on these servers. They can't see what's inside. Each file goes to all of them, so one being blocked doesn't lose it." />
+            </Grid>
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding MediaServers}">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                        <Grid ColumnDefinitions="64,*,Auto" Padding="0,2,8,2">
+                            <Label Grid.Column="1" Text="{Binding .}" Style="{StaticResource RowTitle}" FontSize="15" LineBreakMode="MiddleTruncation" VerticalOptions="Center" />
+                            <ImageButton Grid.Column="2" WidthRequest="44" HeightRequest="44" Padding="10" BackgroundColor="Transparent"
+                                         SemanticProperties.Description="Remove media server"
+                                         Command="{Binding RemoveMediaServerCommand, Source={RelativeSource AncestorType={x:Type vm:SettingsViewModel}}, x:DataType=vm:SettingsViewModel}" CommandParameter="{Binding .}">
+                                <ImageButton.Source>
+                                    <FontImageSource FontFamily="MaterialIcons" Glyph="{x:Static views:Icons.Delete}"
+                                                     Color="{AppThemeBinding Light={StaticResource SubTextLight}, Dark={StaticResource SubTextDark}}" />
+                                </ImageButton.Source>
+                            </ImageButton>
+                        </Grid>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+            <Grid ColumnDefinitions="64,*,Auto" ColumnSpacing="8" Padding="0,6,16,0">
+                <Label Text="{x:Static views:Icons.Add}" Style="{StaticResource Icon}" />
+                <Border Grid.Column="1" Style="{StaticResource FieldBox}">
+                    <Entry Text="{Binding NewMediaServer}" Placeholder="https://blossom.example.com" Keyboard="Url" Style="{StaticResource PlainEntry}" />
+                </Border>
+                <Button Grid.Column="2" Text="Add" Style="{StaticResource TextButton}" Command="{Binding AddMediaServerCommand}" />
+            </Grid>
+            <Button Text="Restore default media servers" Style="{StaticResource TextButton}" HorizontalOptions="Start" Margin="52,4,0,0" Command="{Binding ResetMediaServersCommand}" />
+            <BoxView Style="{StaticResource Divider}" Margin="64,4,0,0" />
+
+            <!-- Blocked contacts -->
+            <Label Text="Blocked contacts" Style="{StaticResource SectionTitle}" />
+            <Grid ColumnDefinitions="64,*" Padding="0,0,16,6" IsVisible="{Binding HasBlocked, Converter={StaticResource InvertedBool}}">
+                <Label Text="{x:Static views:Icons.Block}" Style="{StaticResource Icon}" />
+                <Label Grid.Column="1" Style="{StaticResource Caption}" Text="No one. To block someone, open their chat and tap ⋮ → Block." VerticalOptions="Center" />
+            </Grid>
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Blocked}">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:BlockedItem">
+                        <Grid ColumnDefinitions="64,*,Auto" Padding="0,4,8,4">
+                            <Label Text="{x:Static views:Icons.Block}" Style="{StaticResource Icon}" TextColor="{StaticResource Danger}" />
+                            <Label Grid.Column="1" Text="{Binding Name}" Style="{StaticResource RowTitle}" VerticalOptions="Center" LineBreakMode="TailTruncation" />
+                            <Button Grid.Column="2" Text="Unblock" Style="{StaticResource TextButton}"
+                                    Command="{Binding UnblockCommand, Source={RelativeSource AncestorType={x:Type vm:SettingsViewModel}}, x:DataType=vm:SettingsViewModel}" CommandParameter="{Binding .}" />
+                        </Grid>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+            <BoxView Style="{StaticResource Divider}" Margin="64,4,0,0" />
+
             <!-- Account: backup key -->
             <Label Text="Account" Style="{StaticResource SectionTitle}" />
             <Grid ColumnDefinitions="64,*" Padding="0,8,16,8">

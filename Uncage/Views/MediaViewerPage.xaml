@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             x:Class="Uncage.Views.MediaViewerPage"
+             Shell.TabBarIsVisible="False"
+             Shell.BackgroundColor="Black"
+             Shell.ForegroundColor="White"
+             Shell.TitleColor="White"
+             SafeAreaEdges="All"
+             BackgroundColor="Black">
+    <Grid>
+        <Image x:Name="Photo" Aspect="AspectFit" IsVisible="False" />
+        <toolkit:MediaElement x:Name="Player" IsVisible="False" ShouldAutoPlay="True" ShouldShowPlaybackControls="True" Aspect="AspectFit" />
+        <ActivityIndicator x:Name="Spinner" IsRunning="True" Color="White" WidthRequest="48" HeightRequest="48" />
+        <Label x:Name="ErrorText" IsVisible="False" TextColor="White" HorizontalTextAlignment="Center" VerticalOptions="Center" Margin="32" />
+    </Grid>
+</ContentPage>

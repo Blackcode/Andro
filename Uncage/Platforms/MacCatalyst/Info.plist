@@ -55,5 +55,9 @@
 	<string>Assets.xcassets/appicon.appiconset</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Uncage uses the camera only to scan a contact's QR code. Nothing is recorded or sent.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Uncage uses the microphone only while you record a voice message.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Uncage lets you pick photos and videos to send. They are encrypted before leaving your device.</string>
 </dict>
 </plist>

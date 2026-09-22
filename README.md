@@ -11,6 +11,7 @@ It's a .NET MAUI app with one codebase for **Android, iOS, macOS and Windows**.
 | Accounts tied to phone numbers or SIM registration | There are no accounts. Your identity is a key pair created on your phone. People add you by your ID (`npub1…`), shared as a QR code or text. |
 | Reading messages or mapping who talks to whom | Messages are end-to-end encrypted with **NIP-44** (audited by Cure53) and wrapped with **NIP-59/NIP-17**. A relay sees only an encrypted blob for your key, signed by a throwaway key, with a randomized timestamp. It can't see the sender, the text, or when the message was really sent. |
 | The ISP sees which relays you use, or blocks them by IP or DNS | The **Route through Tor** setting sends everything through a SOCKS5 proxy (Orbot on Android). Host names are resolved by the proxy, so DNS lookups don't leak, and `.onion` relays work. Without Tor, traffic is ordinary HTTPS/WebSocket on port 443. |
+| Photos, videos and voice messages | Each file is encrypted on the phone with a fresh AES-256-GCM key and uploaded, as unreadable data, to several **Blossom** media servers under a throwaway key. The link and the key travel inside the end-to-end encrypted message (NIP-17 file messages). Downloads are checked against their hash and try every server in turn. Photos are resized and their metadata, including location, is removed before sending. |
 | A seized or inspected phone | History is encrypted on disk (ChaCha20-Poly1305). The keys are kept in the platform keystore. Android screenshots and the recent-apps preview are blocked, and cloud backup is disabled. Settings has "Erase identity". |
 
 Uncage uses the open Nostr protocol (NIP-01/17/19/42/44/59). It can exchange private messages with any other Nostr client that supports NIP-17, and its message format is tested against the protocol's official test vectors and reference implementation.
@@ -20,7 +21,8 @@ Uncage uses the open Nostr protocol (NIP-01/17/19/42/44/59). It can exchange pri
 - **Messages arrive while the app is open.** Push notifications would need Google or Apple servers, which can be blocked and which reveal who receives messages. An Android background service is a possible next step.
 - **No forward secrecy.** If your secret key is stolen, past messages stored on relays can be decrypted. Keep the backup key offline.
 - **Relays can refuse to store messages.** That's why several are used; add relays you trust.
-- **One-to-one chats only**, text only for now.
+- **One-to-one chats only** for now.
+- **Media servers are third parties.** They can refuse or delete files; that's why each file goes to several of them. Add your own in Settings.
 - Anyone can create an identity with any name, so check a contact's ID in person. **New chat → Scan their QR code** reads the code on their **My ID** screen, which also accepts `npub`/`nprofile` QR codes from other Nostr apps. Scanning happens entirely on the phone.
 
 ## Solution layout
@@ -81,7 +83,11 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-The **Release** workflow builds a signed `Uncage-1.0.0.apk` and publishes it on the repository's **Releases** page with its SHA-256 hash. Share that page or the APK link. Once the secrets exist, the regular **Build** workflow signs its APKs with the same key.
+The **Release** workflow builds a signed `Uncage-1.0.0.apk` (to share directly) and `Uncage-1.0.0.aab` (to upload to Google Play), and publishes both on the repository's **Releases** page with their SHA-256 hashes. Share that page or the APK link. Once the secrets exist, the regular **Build** workflow signs its APKs with the same key.
+
+## Privacy policy
+
+See [PRIVACY.md](PRIVACY.md). Use its GitHub URL as the privacy policy link on Google Play.
 
 ## Using Tor
 

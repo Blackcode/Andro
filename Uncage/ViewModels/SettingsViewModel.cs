@@ -14,6 +14,16 @@ public partial class SettingsViewModel(ChatSession session) : ObservableObject
 
 	public ObservableCollection<RelayItem> Relays { get; } = [];
 
+	public ObservableCollection<string> MediaServers { get; } = [];
+
+	public ObservableCollection<BlockedItem> Blocked { get; } = [];
+
+	[ObservableProperty]
+	public partial string NewMediaServer { get; set; } = "";
+
+	[ObservableProperty]
+	public partial bool HasBlocked { get; set; }
+
 	[ObservableProperty]
 	public partial string NewRelay { get; set; } = "";
 
@@ -40,6 +50,8 @@ public partial class SettingsViewModel(ChatSession session) : ObservableObject
 		IsSecretVisible = false;
 		session.Current.ConnectionChanged += RefreshRelays;
 		RefreshRelays();
+		RefreshMediaServers();
+		RefreshBlocked();
 	}
 
 	public void OnDisappearing()
@@ -57,6 +69,64 @@ public partial class SettingsViewModel(ChatSession session) : ObservableObject
 		foreach (var url in messenger.Store.Settings.Relays)
 			Relays.Add(new RelayItem(url, live.GetValueOrDefault(url)));
 	});
+
+	void RefreshMediaServers()
+	{
+		MediaServers.Clear();
+		foreach (var server in session.Current.Store.Settings.MediaServers)
+			MediaServers.Add(server);
+	}
+
+	void RefreshBlocked()
+	{
+		Blocked.Clear();
+		foreach (var contact in session.Current.Store.BlockedContacts())
+			Blocked.Add(new BlockedItem(contact.PubKey, contact.DisplayName));
+		HasBlocked = Blocked.Count > 0;
+	}
+
+	[RelayCommand]
+	async Task AddMediaServerAsync()
+	{
+		var url = NewMediaServer.Trim();
+		if (!url.Contains("://"))
+			url = "https://" + url;
+		if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "http"))
+		{
+			await Ui.Alert("Invalid server", "Media server addresses look like https://blossom.example.com");
+			return;
+		}
+		session.Current.SetMediaServers([.. session.Current.Store.Settings.MediaServers, url]);
+		NewMediaServer = "";
+		RefreshMediaServers();
+	}
+
+	[RelayCommand]
+	async Task RemoveMediaServerAsync(string server)
+	{
+		var remaining = session.Current.Store.Settings.MediaServers.Where(s => s != server).ToList();
+		if (remaining.Count == 0)
+		{
+			await Ui.Alert("Keep at least one server", "Photos, videos and voice messages are stored on these servers.");
+			return;
+		}
+		session.Current.SetMediaServers(remaining);
+		RefreshMediaServers();
+	}
+
+	[RelayCommand]
+	void ResetMediaServers()
+	{
+		session.Current.SetMediaServers(DefaultRelays.MediaServers);
+		RefreshMediaServers();
+	}
+
+	[RelayCommand]
+	void Unblock(BlockedItem item)
+	{
+		session.Current.Unblock(item.PubKey);
+		RefreshBlocked();
+	}
 
 	[RelayCommand]
 	async Task AddRelayAsync()
@@ -147,6 +217,8 @@ public partial class SettingsViewModel(ChatSession session) : ObservableObject
 		await Shell.Current.GoToAsync("//welcome");
 	}
 }
+
+public sealed record BlockedItem(string PubKey, string Name);
 
 public sealed class RelayItem(string url, RelayConnection? connection)
 {
