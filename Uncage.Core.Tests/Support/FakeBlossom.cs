@@ -28,6 +28,8 @@ sealed class FakeBlossom : IDisposable
 	public byte[]? Tamper { get; set; }
 	/// <summary>Like many public media hosts: refuse uploads not labelled as image/video/audio.</summary>
 	public bool MediaTypesOnly { get; set; }
+	/// <summary>Like 24242.io: accept only these exact types (null = no restriction).</summary>
+	public string[]? AllowedTypes { get; set; }
 
 	async Task Loop()
 	{
@@ -58,7 +60,8 @@ sealed class FakeBlossom : IDisposable
 				return;
 			}
 			var type = ctx.Request.ContentType ?? "";
-			if (MediaTypesOnly && !(type.StartsWith("image/") || type.StartsWith("video/") || type.StartsWith("audio/")))
+			if ((MediaTypesOnly && !(type.StartsWith("image/") || type.StartsWith("video/") || type.StartsWith("audio/")))
+				|| (AllowedTypes is not null && !AllowedTypes.Contains(type)))
 			{
 				ctx.Response.StatusCode = 415;
 				ctx.Response.Headers["X-Reason"] = "Unsupported Media Type";

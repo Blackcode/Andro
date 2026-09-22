@@ -140,6 +140,26 @@ public class MediaTests
 	}
 
 	[Fact]
+	public async Task VoiceNotesReachServersThatOnlyTakeImagesAndVideo()
+	{
+		await using var relay = new TestRelay();
+		using var server = new FakeBlossom { AllowedTypes = ["image/jpeg", "image/png", "video/mp4"] };
+		var bobKeys = NostrKeys.Generate();
+		await using var alice = CreateUser(NostrKeys.Generate(), relay.Url, server.Url);
+		await using var bob = CreateUser(bobKeys, relay.Url, server.Url);
+		await alice.StartAsync();
+		await bob.StartAsync();
+
+		var voice = RandomNumberGenerator.GetBytes(8_000);
+		var bobGets = Next(bob);
+		var sent = await alice.SendFileAsync(bobKeys.PublicKeyHex, voice, "audio/mp4", durationSeconds: 2);
+		Assert.Equal(MessageStatus.Sent, sent.Status);
+		var received = await bobGets;
+		Assert.Equal("audio/mp4", received.Attachment!.MimeType); // the real type is in the message
+		Assert.Equal(voice, await bob.GetAttachmentAsync(received.Attachment));
+	}
+
+	[Fact]
 	public async Task FailedUploadsCanBeRetried()
 	{
 		await using var relay = new TestRelay();

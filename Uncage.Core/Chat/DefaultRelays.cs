@@ -21,8 +21,8 @@ public static class DefaultRelays
 	/// </summary>
 	public static readonly IReadOnlyList<string> MediaServers =
 	[
+		// Servers that inspect file contents (e.g. blossom.band) can't store encrypted files, so they're not listed.
 		"https://blossom.primal.net",
-		"https://blossom.band",
 		"https://24242.io",
 	];
 

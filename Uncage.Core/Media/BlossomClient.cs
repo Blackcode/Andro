@@ -52,9 +52,15 @@ public sealed class BlossomClient : IDisposable
 			var host = Uri.TryCreate(server, UriKind.Absolute, out var uri) ? uri.Host : server;
 			try
 			{
-				var (url, error, status) = await UploadOneAsync(server, blob, sha256, "application/octet-stream", cancellationToken);
-				if (url is null && status is 400 or 415 && mimeType is { Length: > 0 } && mimeType != "application/octet-stream")
-					(url, error, _) = await UploadOneAsync(server, blob, sha256, mimeType, cancellationToken);
+				string? url = null, error = null;
+				foreach (var contentType in LabelsFor(mimeType))
+				{
+					int? status;
+					(url, error, status) = await UploadOneAsync(server, blob, sha256, contentType, cancellationToken);
+					// Only a refused label (400/415) is worth another try; anything else won't change.
+					if (url is not null || status is not (400 or 415))
+						break;
+				}
 				return (Url: url, Error: error is null ? null : $"{host}: {error}");
 			}
 			catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException or InvalidDataException && !cancellationToken.IsCancellationRequested)
@@ -67,6 +73,26 @@ public sealed class BlossomClient : IDisposable
 		});
 		var results = await Task.WhenAll(uploads);
 		return new UploadResult([.. results.Select(r => r.Url).OfType<string>()], [.. results.Select(r => r.Error).OfType<string>()]);
+	}
+
+	/// <summary>
+	/// Content-Type labels to try, in order. Many public media servers only accept certain media types;
+	/// the blob is encrypted either way, and the real type travels inside the message.
+	/// Voice notes are AAC in an MP4 container, for which video/mp4 is also a valid label.
+	/// </summary>
+	static IEnumerable<string> LabelsFor(string? mimeType)
+	{
+		yield return "application/octet-stream";
+		if (string.IsNullOrEmpty(mimeType) || mimeType == "application/octet-stream")
+			yield break;
+		yield return mimeType;
+		if (mimeType.StartsWith("audio/", StringComparison.Ordinal))
+		{
+			if (mimeType != "audio/mpeg")
+				yield return "audio/mpeg";
+			if (mimeType is "audio/mp4" or "audio/aac" or "audio/x-m4a")
+				yield return "video/mp4";
+		}
 	}
 
 	async Task<(string? Url, string? Error, int? Status)> UploadOneAsync(string server, byte[] blob, string sha256, string contentType, CancellationToken cancellationToken)
