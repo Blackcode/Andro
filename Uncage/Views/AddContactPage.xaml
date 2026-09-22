@@ -5,6 +5,7 @@
              xmlns:views="clr-namespace:Uncage.Views"
              x:Class="Uncage.Views.AddContactPage"
              x:DataType="vm:AddContactViewModel"
+             SafeAreaEdges="All"
              Shell.TabBarIsVisible="False"
              Title="New chat">
     <ScrollView>

@@ -5,6 +5,7 @@
              xmlns:views="clr-namespace:Uncage.Views"
              x:Class="Uncage.Views.ChatPage"
              x:DataType="vm:ChatViewModel"
+             SafeAreaEdges="All"
              Shell.TabBarIsVisible="False"
              BackgroundColor="{AppThemeBinding Light={StaticResource WallpaperLight}, Dark={StaticResource WallpaperDark}}">
 

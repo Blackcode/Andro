@@ -5,6 +5,7 @@
              xmlns:views="clr-namespace:Uncage.Views"
              x:Class="Uncage.Views.WelcomePage"
              x:DataType="vm:WelcomeViewModel"
+             SafeAreaEdges="All"
              Shell.NavBarIsVisible="False">
     <ScrollView>
         <VerticalStackLayout Padding="28,56,28,32" Spacing="22" MaximumWidthRequest="480">

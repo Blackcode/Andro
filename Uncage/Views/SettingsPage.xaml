@@ -4,7 +4,8 @@
              xmlns:vm="clr-namespace:Uncage.ViewModels"
              xmlns:views="clr-namespace:Uncage.Views"
              x:Class="Uncage.Views.SettingsPage"
-             x:DataType="vm:SettingsViewModel">
+             x:DataType="vm:SettingsViewModel"
+             SafeAreaEdges="All">
 
     <Shell.TitleView>
         <Label Text="Settings" Style="{StaticResource AppTitle}" Margin="4,0" />
