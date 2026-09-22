@@ -142,7 +142,7 @@
         </CollectionView>
 
         <!-- Composer -->
-        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="6" Padding="6,4,6,8">
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="6" Padding="8,6,8,16">
             <Border Padding="16,0" StrokeThickness="0" StrokeShape="RoundRectangle 24" MinimumHeightRequest="48"
                     BackgroundColor="{AppThemeBinding Light={StaticResource IncomingLight}, Dark={StaticResource IncomingDark}}">
                 <Editor Text="{Binding Draft}" Placeholder="Message" AutoSize="TextChanges" MaximumHeightRequest="140" FontSize="16"
