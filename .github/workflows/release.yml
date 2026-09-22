@@ -66,17 +66,25 @@ jobs:
           # (v1.2.3 -> 1002003) so it always increases and stays above regular CI builds.
           IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION"
           VERSION_CODE=$((MAJOR * 1000000 + MINOR * 1000 + PATCH))
-          dotnet publish Uncage/Uncage.csproj -f net10.0-android -c Release \
-            -p:AndroidPackageFormats=aab%3Bapk \
-            -p:ApplicationDisplayVersion="$VERSION" \
-            -p:ApplicationVersion=$VERSION_CODE \
-            -p:AndroidKeyStore=true \
-            -p:AndroidSigningKeyStore="$RUNNER_TEMP/release.keystore" \
-            -p:AndroidSigningKeyAlias="${{ secrets.ANDROID_KEY_ALIAS }}" \
-            -p:AndroidSigningStorePass=env:ANDROID_KEYSTORE_PASSWORD \
-            -p:AndroidSigningKeyPass=env:ANDROID_KEYSTORE_PASSWORD
-          cp Uncage/bin/Release/net10.0-android/publish/*-Signed.apk "Uncage-$VERSION.apk"
-          cp Uncage/bin/Release/net10.0-android/publish/*-Signed.aab "Uncage-$VERSION.aab"
+          # Build each format separately (the second pass reuses the compiled app), then pick up the signed outputs.
+          for FORMAT in aab apk; do
+            dotnet publish Uncage/Uncage.csproj -f net10.0-android -c Release \
+              -p:AndroidPackageFormat=$FORMAT \
+              -p:ApplicationDisplayVersion="$VERSION" \
+              -p:ApplicationVersion=$VERSION_CODE \
+              -p:AndroidKeyStore=true \
+              -p:AndroidSigningKeyStore="$RUNNER_TEMP/release.keystore" \
+              -p:AndroidSigningKeyAlias="${{ secrets.ANDROID_KEY_ALIAS }}" \
+              -p:AndroidSigningStorePass=env:ANDROID_KEYSTORE_PASSWORD \
+              -p:AndroidSigningKeyPass=env:ANDROID_KEYSTORE_PASSWORD
+            FILE=$(find Uncage/bin/Release/net10.0-android -name "*-Signed.$FORMAT" -newer Uncage/Uncage.csproj | head -n 1)
+            if [ -z "$FILE" ]; then
+              echo "::error::No signed .$FORMAT was produced."
+              find Uncage/bin/Release/net10.0-android -name "*.$FORMAT"
+              exit 1
+            fi
+            cp "$FILE" "Uncage-$VERSION.$FORMAT"
+          done
           sha256sum "Uncage-$VERSION.apk" "Uncage-$VERSION.aab" > "Uncage-$VERSION.sha256"
           rm -f "$RUNNER_TEMP/release.keystore"
 
