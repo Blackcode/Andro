@@ -2,6 +2,7 @@ name: Build
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -33,7 +34,19 @@ jobs:
       - name: Install MAUI Android workload
         run: dotnet workload install maui-android
       - name: Build APK
-        run: dotnet publish Uncage/Uncage.csproj -f net10.0-android -c Release -p:AndroidPackageFormat=apk
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          SIGNING=""
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            SIGNING="-p:AndroidKeyStore=true -p:AndroidSigningKeyStore=$RUNNER_TEMP/release.keystore -p:AndroidSigningKeyAlias=${{ secrets.ANDROID_KEY_ALIAS }} -p:AndroidSigningStorePass=env:ANDROID_KEYSTORE_PASSWORD -p:AndroidSigningKeyPass=env:ANDROID_KEYSTORE_PASSWORD"
+          else
+            echo "::warning::No release key configured; this APK is signed with a throwaway debug key and can't update an installed copy."
+          fi
+          dotnet publish Uncage/Uncage.csproj -f net10.0-android -c Release -p:AndroidPackageFormat=apk -p:ApplicationVersion=${{ github.run_number }} $SIGNING
+          rm -f "$RUNNER_TEMP/release.keystore"
       - uses: actions/upload-artifact@v4
         with:
           name: uncage-android

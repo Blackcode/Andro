@@ -60,7 +60,28 @@ To check that the app's XAML and C# compile on a machine without the MAUI worklo
 
 To send a real message between two new identities over the default public relays, run `UNCAGE_LIVE_TESTS=1 dotnet test Uncage.Core.Tests --filter LiveRelayTests`.
 
-CI (`.github/workflows/build.yml`) runs the tests and builds a signed debug-key Android APK (a downloadable artifact) and the Windows app.
+CI (`.github/workflows/build.yml`) runs the tests and builds the Android APK (a downloadable artifact) and the Windows app. Tagged versions are published as GitHub Releases (see below).
+
+## Publishing a release
+
+Every APK must be signed with the same key, or Android won't install it as an update and people would lose their chats.
+
+**One-time setup:**
+1. On your PC, run `powershell -ExecutionPolicy Bypass -File tools\create-release-key.ps1`. It creates `uncage-release.keystore` (never committed) and copies it, base64-encoded, to your clipboard.
+2. On GitHub, go to **Settings → Secrets and variables → Actions** and add three repository secrets:
+   - `ANDROID_KEYSTORE_BASE64`: paste from the clipboard.
+   - `ANDROID_KEYSTORE_PASSWORD`: the password you chose.
+   - `ANDROID_KEY_ALIAS`: `uncage`
+3. Back up the keystore and its password somewhere private, such as a password manager. If you lose them, you can never update installed apps.
+
+**Each release:**
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The **Release** workflow builds a signed `Uncage-1.0.0.apk` and publishes it on the repository's **Releases** page with its SHA-256 hash. Share that page or the APK link. Once the secrets exist, the regular **Build** workflow signs its APKs with the same key.
 
 ## Using Tor
 

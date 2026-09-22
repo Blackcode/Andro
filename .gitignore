@@ -20,3 +20,7 @@ AppPackages/
 # OS-generated files
 .DS_Store
 Thumbs.db
+
+# Signing keys: never commit
+*.keystore
+*.jks
