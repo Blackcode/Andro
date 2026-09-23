@@ -1,0 +1,47 @@
+name: Apple
+
+# iOS (simulator) and Mac Catalyst builds for testing on a Mac.
+# Manual, because macOS runners cost more minutes: Actions > Apple > Run workflow.
+on:
+  workflow_dispatch:
+
+jobs:
+  apple:
+    name: iOS simulator and Mac Catalyst
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select the newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install MAUI Apple workloads
+        run: dotnet workload install maui-ios maui-maccatalyst
+
+      - name: Build for the iOS Simulator
+        run: dotnet build Uncage/Uncage.csproj -f net10.0-ios -c Debug -p:RuntimeIdentifier=iossimulator-arm64
+
+      - name: Build the Mac app (Mac Catalyst)
+        run: dotnet build Uncage/Uncage.csproj -f net10.0-maccatalyst -c Debug -p:RuntimeIdentifier=maccatalyst-arm64
+
+      - name: Package
+        run: |
+          IOS_APP=$(find Uncage/bin/Debug/net10.0-ios/iossimulator-arm64 -maxdepth 1 -name "*.app" | head -n 1)
+          MAC_APP=$(find Uncage/bin/Debug/net10.0-maccatalyst/maccatalyst-arm64 -maxdepth 1 -name "*.app" | head -n 1)
+          ditto -c -k --keepParent "$IOS_APP" Uncage-iOS-Simulator.zip
+          ditto -c -k --keepParent "$MAC_APP" Uncage-Mac.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uncage-apple
+          path: |
+            Uncage-iOS-Simulator.zip
+            Uncage-Mac.zip
