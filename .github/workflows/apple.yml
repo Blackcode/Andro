@@ -12,13 +12,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select the newest Xcode
-        run: |
-          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)
-          echo "Using $XCODE"
-          sudo xcode-select -s "$XCODE/Contents/Developer"
-          xcodebuild -version
-
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
@@ -26,6 +19,21 @@ jobs:
       - name: Install MAUI workloads
         # Restore evaluates every target framework, so the Android workload is needed too (it isn't built here).
         run: dotnet workload install maui-ios maui-maccatalyst maui-android
+
+      - name: Select the Xcode that matches the .NET iOS SDK
+        run: |
+          # e.g. ~/.dotnet/packs/Microsoft.iOS.Sdk.net10.0_26.5 -> 26.5
+          WANT=$(ls -d "$DOTNET_ROOT"/packs/Microsoft.iOS.Sdk.net10.0_* | sed 's/.*_//' | sort -V | tail -n 1)
+          XCODE=$(ls -d /Applications/Xcode_${WANT}*.app 2>/dev/null | sort -V | tail -n 1)
+          if [ -z "$XCODE" ]; then
+            echo "::warning::No Xcode $WANT on this runner; using the default one."
+            ls -d /Applications/Xcode_*.app
+          else
+            echo "Using $XCODE for .NET iOS SDK $WANT"
+            sudo xcode-select -s "$XCODE/Contents/Developer"
+          fi
+          xcodebuild -version
+          xcrun --sdk macosx --show-sdk-path
 
       - name: Build for the iOS Simulator
         run: dotnet build Uncage/Uncage.csproj -f net10.0-ios -c Debug -p:RuntimeIdentifier=iossimulator-arm64
