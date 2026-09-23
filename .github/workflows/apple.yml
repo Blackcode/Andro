@@ -23,8 +23,9 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Install MAUI Apple workloads
-        run: dotnet workload install maui-ios maui-maccatalyst
+      - name: Install MAUI workloads
+        # Restore evaluates every target framework, so the Android workload is needed too (it isn't built here).
+        run: dotnet workload install maui-ios maui-maccatalyst maui-android
 
       - name: Build for the iOS Simulator
         run: dotnet build Uncage/Uncage.csproj -f net10.0-ios -c Debug -p:RuntimeIdentifier=iossimulator-arm64
